@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        build_type: [Debug, Release]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake ninja
+    
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+    
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -G Ninja \
+          -DBUILD_TESTS=ON \
+          -DBUILD_BENCHMARKS=ON
+    
+    - name: Build
+      run: cmake --build build --parallel
+    
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure --parallel
+    
+    - name: Run benchmarks (Release only)
+      if: matrix.build_type == 'Release'
+      working-directory: build
+      run: ./file_organizer_bench --benchmark_min_time=0.1s
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+    
+    - name: Configure with sanitizers
+      run: |
+        cmake -S . -B build \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -G Ninja \
+          -DENABLE_SANITIZERS=ON \
+          -DBUILD_TESTS=ON
+    
+    - name: Build
+      run: cmake --build build --parallel
+    
+    - name: Run tests with sanitizers
+      working-directory: build
+      run: ctest --output-on-failure
+      env:
+        ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1
+        UBSAN_OPTIONS: print_stacktrace=1

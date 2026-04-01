@@ -1,0 +1,316 @@
+# File Organizer - Comprehensive .gitignore
+
+# Build directories
+build/
+build-*/
+cmake-build-*/
+out/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Compiled binaries
+file_organizer
+file_organizer_tests
+file_organizer_bench
+*.exe
+*.out
+*.app
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+*.ko
+*.elf
+
+# Libraries
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Static analysis
+*.gcda
+*.gcno
+*.gcov
+
+# Profiling
+*.prof
+gmon.out
+callgrind.out.*
+perf.data
+perf.data.old
+
+# Sanitizer outputs
+*.san
+*.asan
+*.ubsan
+*.tsan
+
+# Coverage reports
+coverage/
+*.coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# Testing artifacts
+test_results/
+Testing/
+*.xml
+*.log
+
+# Benchmark results
+benchmark_results/
+*.json
+baseline.txt
+optimized.txt
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-*
+.clangd/
+.cache/
+
+# Compilation database (optional - some prefer to commit this)
+# compile_commands.json
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# Package managers
+conan/
+vcpkg_installed/
+_deps/
+
+# Third-party libraries (if not using FetchContent)
+third_party/
+vendor/
+!third_party/.gitkeep
+
+# Generated documentation
+docs/html/
+docs/latex/
+docs/doxygen/
+*.dox
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# OS-specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Core dumps
+core
+core.*
+*.core
+*.dump
+
+# Valgrind
+*.valgrind
+vgcore.*
+
+# Address Sanitizer
+*.asan.*
+
+# Memory leaks
+*.leaks
+
+# Python (if using Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+venv/
+env/
+ENV/
+
+# Node.js (if using npm scripts)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package files
+*.tar.gz
+*.zip
+*.7z
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# Installation directories
+install/
+dist/
+bin/
+lib/
+
+# User configuration (preserve template)
+config.json
+!config.json.example
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database files (for future SQLite cache)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ONNX models (large files - use Git LFS or download separately)
+*.onnx
+models/
+!models/.gitkeep
+
+# Embedding cache
+.cache/
+embeddings/
+*.embeddings
+
+# Benchmark data
+benchmark_data/
+test_data/
+*.dat
+
+# Profiling data
+*.perf
+*.trace
+
+# Clang tools
+.clang-format
+.clang-tidy
+
+# ccache
+.ccache/
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+
+# CLion
+cmake-build-*/
+
+# Eclipse
+.cproject
+.project
+.settings/
+
+# NetBeans
+nbproject/
+
+# Emacs
+\#*\#
+.#*
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+.netrwhist
+
+# Tags
+tags
+TAGS
+.tags
+.TAGS
+
+# ctags
+.ctags
+
+# cscope
+cscope.out
+cscope.in.out
+cscope.po.out
+cscope.files
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Temporary test directories
+/tmp/
+temp/
+*.tmp/
+
+# User-specific test files
+my_test_*
+scratch/
+sandbox/
+
+# Backup files from editors
+*.orig
+*.rej
+
+# Patch files
+*.patch
+*.diff
+
+# Archive files
+*.tar
+*.tgz
+*.tar.bz2
+*.tar.xz
+
+# Keep directory structure
+!.gitkeep
