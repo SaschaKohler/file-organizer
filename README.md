@@ -137,7 +137,7 @@ Die Konfiguration wird in `~/.config/file-organizer/config.json` gespeichert:
 
 Das Projekt verfügt über umfassende Tests:
 
-- **42 Unit Tests** (Google Test)
+- **112 Unit Tests** (Google Test)
 - **Performance Benchmarks** (Google Benchmark)
 - **CI/CD Pipeline** (GitHub Actions für macOS + Linux)
 
@@ -155,18 +155,19 @@ Siehe `docs/TESTING.md` für Details.
 
 ### Project Status
 
-🚀 **Phase 1 Complete:** Foundation & Testing Infrastructure
-- ✅ Comprehensive test suite (42 tests, 100% passing)
-- ✅ Performance benchmarks established
-- ✅ CI/CD pipeline operational
-- ✅ Sanitizer support (ASan, UBSan)
+🚀 **Phase 1 Week 3: ~80% Complete** - MIME Detection, Robustness, Logging, Duplicate Detection
+- ✅ 112 unit tests, 100% passing
+- ✅ MIME detection with libmagic (content-based)
+- ✅ Structured logging with spdlog
+- ✅ Duplicate detection with SimHash embeddings
+- ✅ Advanced UI: tab navigation, dynamic terminal adaptation, scrollable panels
+- ✅ 170+ file formats supported (RAW, ebooks, modern web, CAD, mobile apps)
+- ✅ Thread-safe async duplicate scanning with progress bars
+- ✅ Performance: 75k files/s scan throughput
 
-📋 **Next Phase:** AI-Powered Duplicate Detection
-- MIME-type detection
-- ONNX Runtime integration
-- Embedding-based similarity detection
+📋 **Next:** ONNX Runtime integration for semantic embeddings (Week 3 remainder)
 
-See `docs/PHASE1_SUMMARY.md` and `.windsurf/plans/file-organizer-mvp-bf8546.md` for roadmap.
+See `docs/PROJECT_STATE.md` and `.windsurf/plans/file-organizer-mvp-bf8546.md` for roadmap.
 
 ## Erweiterungen (TODO)
 
@@ -174,8 +175,7 @@ See `docs/PHASE1_SUMMARY.md` and `.windsurf/plans/file-organizer-mvp-bf8546.md` 
 - [ ] Undo-Funktion
 - [ ] Custom Rules via UI
 - [ ] File Preview in UI
-- [ ] Batch-Operationen mit Fortschrittsanzeige
 - [ ] Watch-Mode (automatisch bei neuen Dateien)
-- [ ] **AI Duplicate Detection** (In Progress)
-- [ ] MIME-Type Detection
-- [ ] Content-based Classification
+- [ ] ONNX Runtime Integration (semantic embeddings)
+- [ ] SQLite Cache für Embeddings
+- [ ] Parallelization für Performance
