@@ -18,6 +18,12 @@ struct AppConfig {
    int scan_depth = 0;
    int auto_purge_days = 0; // 0 = never auto-purge
 
+   std::vector<std::string> recent_directories;
+   std::vector<std::string> favorite_directories;
+   static constexpr int MAX_RECENT_DIRS = 5;
+
+   void add_recent_directory(const std::string& dir);
+
    static std::optional<AppConfig> load_from_file(const fs::path& config_path);
    void save_to_file(const fs::path& config_path) const;
 
