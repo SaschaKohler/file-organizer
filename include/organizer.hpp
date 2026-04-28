@@ -50,10 +50,11 @@ public:
     }
 
     target /= file.path.filename();
+    target = resolve_conflict(target);
 
     if (!dry_run_) {
       fs::create_directories(target.parent_path());
-      fs::rename(file.path, target);
+      move_file(file.path, target);
       
       MoveOperation op;
       op.source = file.path;
@@ -85,4 +86,6 @@ private:
   [[nodiscard]] std::optional<OrganizeRule>
   get_rule(const std::string& category) const;
   [[nodiscard]] std::string get_date_subdir(const fs::path& file) const;
+  [[nodiscard]] fs::path resolve_conflict(const fs::path& target) const;
+  void move_file(const fs::path& source, const fs::path& dest);
 };

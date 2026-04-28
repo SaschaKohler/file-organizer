@@ -48,6 +48,12 @@ FetchContent_Declare(
   GIT_TAG 3.4.0
 )
 
+FetchContent_Declare(
+  cli11
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+  GIT_TAG v2.4.1
+)
+
 if(BUILD_TESTS)
   FetchContent_Declare(
     googletest
@@ -67,13 +73,13 @@ if(BUILD_BENCHMARKS)
 endif()
 
 if(BUILD_TESTS AND BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen googletest benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 googletest benchmark)
 elseif(BUILD_TESTS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen googletest)
+  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 googletest)
 elseif(BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 benchmark)
 else()
-  FetchContent_MakeAvailable(ftxui json spdlog eigen)
+  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11)
 endif()
 
 # Ensure Eigen target is available when fetched from source
@@ -106,6 +112,7 @@ target_link_libraries(file_organizer PRIVATE
   ftxui::dom
   ftxui::component
   nlohmann_json::nlohmann_json
+  CLI11::CLI11
 )
 
 # Library for shared code (used by main executable and tests)
@@ -187,14 +194,8 @@ if(BUILD_TESTS)
   gtest_add_tests(TARGET file_organizer_tests)
 endif()
 
-# Debug tool for duplicate detection
-add_executable(test_duplicate_detection
-  test_duplicate_detection.cpp
-)
-
-target_link_libraries(test_duplicate_detection PRIVATE
-  file_organizer_lib
-)
+# Install target
+install(TARGETS file_organizer RUNTIME DESTINATION bin)
 
 # Benchmarks
 if(BUILD_BENCHMARKS)
