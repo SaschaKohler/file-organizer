@@ -42,6 +42,8 @@ FetchContent_Declare(
   GIT_TAG v1.12.0
 )
 
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   eigen
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
@@ -72,14 +74,20 @@ if(BUILD_BENCHMARKS)
   set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
+# Fetch Eigen separately with its tests disabled to avoid registering 900+ ctest targets
+set(_saved_BUILD_TESTING ${BUILD_TESTING})
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(eigen)
+set(BUILD_TESTING ${_saved_BUILD_TESTING} CACHE BOOL "" FORCE)
+
 if(BUILD_TESTS AND BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 googletest benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 googletest benchmark)
 elseif(BUILD_TESTS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 googletest)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 googletest)
 elseif(BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11 benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 benchmark)
 else()
-  FetchContent_MakeAvailable(ftxui json spdlog eigen cli11)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11)
 endif()
 
 # Ensure Eigen target is available when fetched from source
