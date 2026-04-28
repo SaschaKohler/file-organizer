@@ -36,6 +36,8 @@ jobs:
           -G Ninja \
           -DBUILD_TESTS=ON \
           -DBUILD_BENCHMARKS=ON
+      env:
+        PKG_CONFIG_PATH: ${{ runner.os == 'macOS' && '/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/libmagic/lib/pkgconfig' || '' }}
     
     - name: Build
       run: cmake --build build --parallel

@@ -162,6 +162,10 @@ target_link_libraries(file_organizer_lib PUBLIC
   Eigen3::Eigen
 )
 
+target_link_directories(file_organizer_lib PUBLIC
+  ${LIBMAGIC_LIBRARY_DIRS}
+)
+
 target_include_directories(file_organizer_lib PUBLIC
   ${LIBMAGIC_INCLUDE_DIRS}
 )
