@@ -12,7 +12,9 @@ protected:
   fs::path test_dir_;
 
   void SetUp() override {
-    test_dir_ = fs::temp_directory_path() / "file_organizer_test";
+    test_dir_ = fs::temp_directory_path() /
+                ("file_organizer_test_" + std::to_string(getpid()));
+    fs::remove_all(test_dir_);
     fs::create_directories(test_dir_);
   }
 
@@ -339,7 +341,8 @@ TEST_F(FileScannerTest, GetFilesByCategory) {
 TEST_F(FileScannerTest, SetRoot) {
   FileScanner scanner(test_dir_);
   
-  fs::path new_dir = fs::temp_directory_path() / "file_organizer_test2";
+  fs::path new_dir = fs::temp_directory_path() /
+                     ("file_organizer_test2_" + std::to_string(getpid()));
   fs::create_directories(new_dir);
   
   scanner.set_root(new_dir);
