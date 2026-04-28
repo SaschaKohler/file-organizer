@@ -10,7 +10,8 @@ protected:
   fs::path test_config_path_;
 
   void SetUp() override {
-    test_config_path_ = fs::temp_directory_path() / "test_config.json";
+    test_config_path_ = fs::temp_directory_path() /
+                       ("test_config_" + std::to_string(getpid()) + ".json");
   }
 
   void TearDown() override {
@@ -150,7 +151,8 @@ TEST_F(ConfigTest, ConfigDeserialization) {
 }
 
 TEST_F(ConfigTest, SaveCreatesParentDirectories) {
-  fs::path nested_path = fs::temp_directory_path() / "nested" / "dir" / "config.json";
+  fs::path nested_path = fs::temp_directory_path() /
+                         ("nested_" + std::to_string(getpid())) / "dir" / "config.json";
   
   AppConfig config = AppConfig::create_default();
   

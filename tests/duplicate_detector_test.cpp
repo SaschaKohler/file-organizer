@@ -13,7 +13,9 @@ class DuplicateDetectorTest : public ::testing::Test {
    std::unique_ptr<DuplicateDetector> detector_;
 
    void SetUp() override {
-      test_dir_ = fs::temp_directory_path() / "duplicate_detector_test";
+      test_dir_ = fs::temp_directory_path() /
+                  ("duplicate_detector_test_" + std::to_string(getpid()));
+      fs::remove_all(test_dir_);
       fs::create_directories(test_dir_);
 
       engine_ = std::make_unique<EmbeddingEngine>();
