@@ -11,8 +11,11 @@ protected:
   fs::path organize_dir_;
 
   void SetUp() override {
-    test_dir_ = fs::temp_directory_path() / "organizer_test_src";
-    organize_dir_ = fs::temp_directory_path() / "organizer_test_dst";
+    auto pid = std::to_string(getpid());
+    test_dir_ = fs::temp_directory_path() / ("organizer_test_src_" + pid);
+    organize_dir_ = fs::temp_directory_path() / ("organizer_test_dst_" + pid);
+    fs::remove_all(test_dir_);
+    fs::remove_all(organize_dir_);
     fs::create_directories(test_dir_);
     fs::create_directories(organize_dir_);
   }

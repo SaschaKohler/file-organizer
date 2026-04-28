@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "utils.hpp"
 #include <fstream>
 
 void to_json(json& j, const OrganizeRule& rule) {
@@ -34,7 +35,7 @@ void from_json(const json& j, AppConfig& config) {
       config.quarantine_dir = j.at("quarantine_dir").get<std::string>();
    } else {
       config.quarantine_dir =
-          fs::path(std::getenv("HOME")) / ".file-organizer" / "quarantine";
+          require_home_directory() / ".file-organizer" / "quarantine";
    }
    j.at("rules").get_to(config.rules);
    if (j.contains("enabled_categories")) {
@@ -85,10 +86,10 @@ void AppConfig::save_to_file(const fs::path& config_path) const {
 
 AppConfig AppConfig::create_default() {
    AppConfig config;
-   config.watch_dir = fs::path(std::getenv("HOME")) / "Downloads";
-   config.organize_base_dir = fs::path(std::getenv("HOME")) / "Organized";
-   config.quarantine_dir =
-       fs::path(std::getenv("HOME")) / ".file-organizer" / "quarantine";
+   auto home = require_home_directory();
+   config.watch_dir = home / "Downloads";
+   config.organize_base_dir = home / "Organized";
+   config.quarantine_dir = home / ".file-organizer" / "quarantine";
    config.dry_run = true;
    config.scan_depth = 0;
    config.auto_purge_days = 0;

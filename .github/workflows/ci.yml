@@ -21,13 +21,13 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install cmake ninja
+        brew install cmake ninja libmagic
     
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake ninja-build
+        sudo apt-get install -y cmake ninja-build libmagic-dev pkg-config
     
     - name: Configure CMake
       run: |
@@ -36,6 +36,8 @@ jobs:
           -G Ninja \
           -DBUILD_TESTS=ON \
           -DBUILD_BENCHMARKS=ON
+      env:
+        PKG_CONFIG_PATH: ${{ runner.os == 'macOS' && '/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/libmagic/lib/pkgconfig' || '' }}
     
     - name: Build
       run: cmake --build build --parallel
@@ -58,7 +60,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake ninja-build
+        sudo apt-get install -y cmake ninja-build libmagic-dev pkg-config
     
     - name: Configure with sanitizers
       run: |

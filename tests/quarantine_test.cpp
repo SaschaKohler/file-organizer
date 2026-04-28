@@ -8,8 +8,11 @@ namespace fs = std::filesystem;
 class QuarantineTest : public ::testing::Test {
  protected:
    void SetUp() override {
-      base_dir_ = fs::temp_directory_path() / "quarantine_test_q";
-      src_dir_ = fs::temp_directory_path() / "quarantine_test_src";
+      auto pid = std::to_string(getpid());
+      base_dir_ = fs::temp_directory_path() / ("quarantine_test_q_" + pid);
+      src_dir_ = fs::temp_directory_path() / ("quarantine_test_src_" + pid);
+      fs::remove_all(base_dir_);
+      fs::remove_all(src_dir_);
       fs::create_directories(base_dir_);
       fs::create_directories(src_dir_);
    }

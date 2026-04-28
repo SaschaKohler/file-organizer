@@ -57,7 +57,6 @@ std::string FileScanner::categorize_by_extension(const fs::path& path) const {
       {".3gp", "videos"},
       {".ogv", "videos"},
       {".vob", "videos"},
-      {".ts", "videos"},
       {".mts", "videos"},
       {".m2ts", "videos"},
 

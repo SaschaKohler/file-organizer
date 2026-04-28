@@ -8,7 +8,9 @@ namespace fs = std::filesystem;
 class LoggerTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    test_dir_ = fs::temp_directory_path() / "logger_test";
+    test_dir_ = fs::temp_directory_path() /
+                ("logger_test_" + std::to_string(getpid()));
+    fs::remove_all(test_dir_);
     fs::create_directories(test_dir_);
     Logger::instance().shutdown();
   }

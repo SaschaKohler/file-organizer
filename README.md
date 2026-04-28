@@ -1,34 +1,27 @@
-# File Organizer - Terminal GUI
+# File Organizer
 
-Ein praktisches Tool zum automatischen Organisieren von Dateien mit moderner Terminal-UI.
+A CLI tool for automatically organizing files in directories, with a modern terminal UI.
 
 ## Features
 
-- 📁 **Automatische Kategorisierung** nach Dateityp (170+ Dateiformate)
-- 🎨 **Moderne Terminal GUI** mit FTXUI
-  - Tab-Navigation zwischen Panels
-  - Dynamische Terminal-Anpassung
-  - Scrollbare Panels mit visuellen Indikatoren
-  - Fokus-Hervorhebung (gelbe Borders & Titel)
-- 🔍 **Live-Vorschau** der zu organisierenden Dateien
-- 🔒 **Dry-Run Mode** zum sicheren Testen
-- ⚙️ **JSON-Konfiguration** für flexible Regeln
-- 📊 **Statistiken** nach Kategorie
-- 🗓️ **Datum-basierte Unterordner** (optional)
-- 🔄 **Duplikat-Erkennung** mit Echtzeit-Fortschrittsanzeige
-- 🧵 **Thread-safe** asynchrone Verarbeitung
-- 📝 **Strukturiertes Logging** mit spdlog
-- 🎯 **MIME-basierte Erkennung** mit libmagic
-
-## C++20 Features verwendet
-
-- ✅ **Concepts**: `PathLike`, `Organizable` für Type Constraints
-- ✅ **Ranges**: `std::views::filter` für funktionale Operationen
-- ✅ **std::filesystem**: Moderne Dateisystem-Operationen
-- ✅ **std::optional**: Sichere Rückgabewerte
-- ✅ **Template Constraints**: Type-safe generische Funktionen
-- ✅ **Structured Bindings**: `auto [category, count]`
-- ✅ **std::ranges::sort**: Moderne Sortierung
+- **Automatic categorization** by file type (170+ file formats)
+- **Modern terminal GUI** with FTXUI
+  - Tab navigation between panels
+  - Dynamic terminal adaptation
+  - Scrollable panels with visual indicators
+  - Focus highlighting (yellow borders & titles)
+- **Live preview** of files to be organized
+- **Dry-run mode** for safe testing
+- **JSON configuration** for flexible rules
+- **Statistics** by category
+- **Date-based subfolders** (optional)
+- **Duplicate detection** with real-time progress
+- **Thread-safe** asynchronous processing
+- **Structured logging** with spdlog
+- **MIME-based detection** with libmagic
+- **Batch mode** for scripting and CI/CD pipelines
+- **Signal handling** for clean shutdown (Ctrl+C safe)
+- **Conflict resolution** — never overwrites existing files
 
 ## Build
 
@@ -52,49 +45,102 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON
 cmake --build build --parallel
 ```
 
+### Install
+```bash
+cmake --install build --prefix /usr/local
+```
+
+### Dependencies
+
+**Required (system):**
+- CMake 3.20+
+- C++20 compiler (GCC 11+, Clang 14+, AppleClang 15+)
+- libmagic (`brew install libmagic` on macOS, `apt install libmagic-dev` on Ubuntu)
+- pkg-config
+
+**Fetched automatically via CMake:**
+- FTXUI v5.0.0 — Terminal UI
+- nlohmann/json v3.11.3 — JSON parsing
+- spdlog v1.12.0 — Structured logging
+- Eigen 3.4.0 — Linear algebra
+- CLI11 v2.4.1 — Command-line parsing
+- Google Test v1.14.0 — Unit testing (optional)
+- Google Benchmark v1.8.3 — Performance testing (optional)
+
 ## Usage
 
 ```bash
-# Mit Default-Verzeichnis (~/Downloads)
-./file_organizer
+# Interactive TUI with default directory (~/Downloads)
+file-organizer
 
-# Mit spezifischem Verzeichnis
-./file_organizer /path/to/directory
+# Organize a specific directory
+file-organizer /path/to/directory
+
+# Batch mode (no TUI — organize and exit)
+file-organizer --batch /path/to/directory
+
+# Dry run in batch mode (preview without moving)
+file-organizer --batch --dry-run /path/to/directory
+
+# Custom config file
+file-organizer --config /path/to/config.json
+
+# Set scan depth
+file-organizer --depth 3 /path/to/directory
+
+# Show version
+file-organizer --version
+
+# Show help
+file-organizer --help
 ```
 
-## Keyboard Controls
+### CLI Options
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--help` | `-h` | Show help message |
+| `--version` | `-v` | Show version |
+| `--dry-run` | `-n` | Preview changes without moving files |
+| `--batch` | `-b` | Run in batch mode (no TUI) |
+| `--config <path>` | `-c` | Path to config file |
+| `--depth <N>` | `-d` | Scan depth (0 = current dir only) |
+| `--verbose` | | Enable verbose logging |
+| `--quiet` | `-q` | Suppress non-essential output |
+
+## Keyboard Controls (TUI Mode)
 
 ### Navigation
-- `w` / `Tab` - Wechsel zwischen Panels (FileList, Stats, Preview, CategoryDist)
-- `↑/↓` - Navigate durch Dateien (im FileList-Panel)
-- `Esc` - Zurück zum Hauptmenü (aus Duplikat-/Browser-Ansicht)
+- `w` / `Tab` — Switch between panels (FileList, Stats, Preview, CategoryDist)
+- `↑/↓` — Navigate through files (in FileList panel)
+- `Esc` — Back to main menu (from duplicate/browser view)
 
-### Aktionen
-- `Enter` - Organisiere ausgewählte Datei
-- `a` - Organisiere alle Dateien
-- `r` - Refresh/Neu scannen
-- `d` - Toggle Dry-Run Mode
-- `p` - Toggle Preview-Panel
-- `f` - Duplikat-Erkennung starten
+### Actions
+- `Enter` — Organize selected file
+- `a` — Organize all files
+- `r` — Refresh / rescan
+- `d` — Toggle dry-run mode
+- `p` — Toggle preview panel
+- `f` — Start duplicate detection
 
-### Erweitert
-- `s` - Sortier-Modus wechseln (Name/Größe/Kategorie/Extension)
-- `o` - Sortier-Reihenfolge umkehren
-- `b` - Source-Verzeichnis durchsuchen
-- `t` - Target-Verzeichnis durchsuchen
-- `c` - Kategorien auswählen
-- `u` - Letzte Aktion rückgängig machen
-- `+/-` - Scan-Tiefe anpassen
-- `q` - Quit
+### Advanced
+- `s` — Cycle sort mode (Name/Size/Category/Extension)
+- `o` — Reverse sort order
+- `b` — Browse source directory
+- `t` — Browse target directory
+- `c` — Select categories
+- `u` — Undo last action
+- `+/-` — Adjust scan depth
+- `q` — Quit
 
-## Konfiguration
+## Configuration
 
-Die Konfiguration wird in `~/.config/file-organizer/config.json` gespeichert:
+Configuration is stored in `~/.config/file-organizer/config.json`. See [`config.json.example`](config.json.example) for the full format:
 
 ```json
 {
-  "watch_dir": "/Users/you/Downloads",
-  "organize_base_dir": "/Users/you/Organized",
+  "watch_dir": "~/Downloads",
+  "organize_base_dir": "~/Organized",
   "dry_run": true,
   "rules": [
     {
@@ -111,9 +157,9 @@ Die Konfiguration wird in `~/.config/file-organizer/config.json` gespeichert:
 }
 ```
 
-## Unterstützte Kategorien
+## Supported Categories
 
-- **Images**: jpg, png, gif, svg, webp, heic, heif, cr2, nef, arw, dng (RAW), etc.
+- **Images**: jpg, png, gif, svg, webp, heic, heif, cr2, nef, arw, dng (RAW), psd, etc.
 - **Videos**: mp4, avi, mkv, mov, webm, flv, etc.
 - **Audio**: mp3, wav, flac, aac, ogg, m4a, etc.
 - **Documents**: pdf, doc, docx, txt, md, rtf, odt, epub, mobi, azw, etc.
@@ -122,60 +168,46 @@ Die Konfiguration wird in `~/.config/file-organizer/config.json` gespeichert:
 - **Code**: cpp, py, js, java, ts, tsx, jsx, vue, svelte, go, rust, etc.
 - **Archives**: zip, rar, 7z, tar, gz, tgz, xz, iso, dmg, etc.
 - **Installers**: dmg, pkg, exe, msi, deb, rpm, apk, ipa, appimage, etc.
+- **Other**: Everything else
 
-**Insgesamt 170+ Dateiformate** mit MIME-basierter Erkennung für maximale Genauigkeit.
-- **Other**: Alles andere
+**170+ file formats** with MIME-based detection for maximum accuracy.
 
-## Sicherheit
+## Safety
 
-- **Dry-Run Mode** ist standardmäßig aktiviert
-- Keine Dateien werden gelöscht, nur verschoben
-- Zielverzeichnisse werden automatisch erstellt
-- Konflikte werden durch Überschreiben vermieden (TODO)
+- **Dry-run mode** is enabled by default
+- Files are moved, never deleted
+- Target directories are created automatically
+- **Filename conflicts** are resolved by appending a counter (`file (1).pdf`, `file (2).pdf`)
+- **Signal handling** ensures clean shutdown during file operations
 
 ## Testing
 
-Das Projekt verfügt über umfassende Tests:
+The project has comprehensive tests:
 
-- **112 Unit Tests** (Google Test)
-- **Performance Benchmarks** (Google Benchmark)
-- **CI/CD Pipeline** (GitHub Actions für macOS + Linux)
+- **112+ unit tests** (Google Test)
+- **Performance benchmarks** (Google Benchmark)
+- **CI/CD pipeline** (GitHub Actions for macOS + Linux)
 
 ```bash
-# Tests ausführen
+# Run tests
 ./build/file_organizer_tests
 
-# Benchmarks ausführen
+# Run benchmarks
 ./build/file_organizer_bench
 ```
 
-Siehe `docs/TESTING.md` für Details.
+See `docs/TESTING.md` for details.
 
-## Development
+## C++20 Features
 
-### Project Status
+- **Concepts**: `PathLike`, `Organizable` for type constraints
+- **Ranges**: `std::views::filter` for functional operations
+- **std::filesystem**: Modern filesystem operations
+- **std::optional**: Safe return values
+- **Template constraints**: Type-safe generic functions
+- **Structured bindings**: `auto [category, count]`
+- **std::ranges::sort**: Modern sorting
 
-🚀 **Phase 1 Week 3: ~80% Complete** - MIME Detection, Robustness, Logging, Duplicate Detection
-- ✅ 112 unit tests, 100% passing
-- ✅ MIME detection with libmagic (content-based)
-- ✅ Structured logging with spdlog
-- ✅ Duplicate detection with SimHash embeddings
-- ✅ Advanced UI: tab navigation, dynamic terminal adaptation, scrollable panels
-- ✅ 170+ file formats supported (RAW, ebooks, modern web, CAD, mobile apps)
-- ✅ Thread-safe async duplicate scanning with progress bars
-- ✅ Performance: 75k files/s scan throughput
+## License
 
-📋 **Next:** ONNX Runtime integration for semantic embeddings (Week 3 remainder)
-
-See `docs/PROJECT_STATE.md` and `.windsurf/plans/file-organizer-mvp-bf8546.md` for roadmap.
-
-## Erweiterungen (TODO)
-
-- [ ] Konfliktauflösung bei doppelten Dateinamen
-- [ ] Undo-Funktion
-- [ ] Custom Rules via UI
-- [ ] File Preview in UI
-- [ ] Watch-Mode (automatisch bei neuen Dateien)
-- [ ] ONNX Runtime Integration (semantic embeddings)
-- [ ] SQLite Cache für Embeddings
-- [ ] Parallelization für Performance
+[MIT](LICENSE)

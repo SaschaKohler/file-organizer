@@ -1,0 +1,70 @@
+{
+  "watch_dir": "~/Downloads",
+  "organize_base_dir": "~/Organized",
+  "quarantine_dir": "~/.file-organizer/quarantine",
+  "dry_run": true,
+  "scan_depth": 0,
+  "auto_purge_days": 0,
+  "enabled_categories": [
+    "images",
+    "videos",
+    "audio",
+    "documents",
+    "spreadsheets",
+    "presentations",
+    "code",
+    "archives"
+  ],
+  "rules": [
+    {
+      "category": "images",
+      "target_dir": "Images",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "videos",
+      "target_dir": "Videos",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "audio",
+      "target_dir": "Music",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "documents",
+      "target_dir": "Documents",
+      "create_subdirs_by_date": true
+    },
+    {
+      "category": "spreadsheets",
+      "target_dir": "Documents/Spreadsheets",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "presentations",
+      "target_dir": "Documents/Presentations",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "code",
+      "target_dir": "Code",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "archives",
+      "target_dir": "Archives",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "installers",
+      "target_dir": "Software",
+      "create_subdirs_by_date": false
+    },
+    {
+      "category": "other",
+      "target_dir": "Other",
+      "create_subdirs_by_date": false
+    }
+  ]
+}

@@ -42,10 +42,18 @@ FetchContent_Declare(
   GIT_TAG v1.12.0
 )
 
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   eigen
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
   GIT_TAG 3.4.0
+)
+
+FetchContent_Declare(
+  cli11
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+  GIT_TAG v2.4.1
 )
 
 if(BUILD_TESTS)
@@ -66,14 +74,20 @@ if(BUILD_BENCHMARKS)
   set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
+# Fetch Eigen separately with its tests disabled to avoid registering 900+ ctest targets
+set(_saved_BUILD_TESTING ${BUILD_TESTING})
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(eigen)
+set(BUILD_TESTING ${_saved_BUILD_TESTING} CACHE BOOL "" FORCE)
+
 if(BUILD_TESTS AND BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen googletest benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 googletest benchmark)
 elseif(BUILD_TESTS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen googletest)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 googletest)
 elseif(BUILD_BENCHMARKS)
-  FetchContent_MakeAvailable(ftxui json spdlog eigen benchmark)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11 benchmark)
 else()
-  FetchContent_MakeAvailable(ftxui json spdlog eigen)
+  FetchContent_MakeAvailable(ftxui json spdlog cli11)
 endif()
 
 # Ensure Eigen target is available when fetched from source
@@ -106,6 +120,7 @@ target_link_libraries(file_organizer PRIVATE
   ftxui::dom
   ftxui::component
   nlohmann_json::nlohmann_json
+  CLI11::CLI11
 )
 
 # Library for shared code (used by main executable and tests)
@@ -155,6 +170,10 @@ target_link_libraries(file_organizer_lib PUBLIC
   Eigen3::Eigen
 )
 
+target_link_directories(file_organizer_lib PUBLIC
+  ${LIBMAGIC_LIBRARY_DIRS}
+)
+
 target_include_directories(file_organizer_lib PUBLIC
   ${LIBMAGIC_INCLUDE_DIRS}
 )
@@ -187,14 +206,8 @@ if(BUILD_TESTS)
   gtest_add_tests(TARGET file_organizer_tests)
 endif()
 
-# Debug tool for duplicate detection
-add_executable(test_duplicate_detection
-  test_duplicate_detection.cpp
-)
-
-target_link_libraries(test_duplicate_detection PRIVATE
-  file_organizer_lib
-)
+# Install target
+install(TARGETS file_organizer RUNTIME DESTINATION bin)
 
 # Benchmarks
 if(BUILD_BENCHMARKS)

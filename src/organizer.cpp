@@ -80,6 +80,41 @@ bool Organizer::undo_last_operation() {
   return false;
 }
 
+fs::path Organizer::resolve_conflict(const fs::path& target) const {
+  if (!fs::exists(target)) {
+    return target;
+  }
+
+  auto stem = target.stem().string();
+  auto ext = target.extension().string();
+  auto parent = target.parent_path();
+
+  for (int i = 1; i < 10000; ++i) {
+    auto candidate = parent / (stem + " (" + std::to_string(i) + ")" + ext);
+    if (!fs::exists(candidate)) {
+      return candidate;
+    }
+  }
+
+  return target;
+}
+
+void Organizer::move_file(const fs::path& source, const fs::path& dest) {
+  std::error_code ec;
+  fs::rename(source, dest, ec);
+  if (ec) {
+    fs::copy_file(source, dest, fs::copy_options::overwrite_existing, ec);
+    if (ec) {
+      throw fs::filesystem_error("Failed to move file", source, dest, ec);
+    }
+    fs::remove(source, ec);
+    if (ec) {
+      fs::remove(dest);
+      throw fs::filesystem_error("Failed to remove source after copy", source, ec);
+    }
+  }
+}
+
 void Organizer::clear_history() {
   while (!move_history_.empty()) {
     move_history_.pop();

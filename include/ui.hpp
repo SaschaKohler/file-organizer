@@ -8,13 +8,19 @@
 #include "organizer.hpp"
 #include "quarantine.hpp"
 #include <ftxui/component/component.hpp>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <thread>
 
 class FileOrganizerUI {
  public:
    FileOrganizerUI(AppConfig& config);
+   ~FileOrganizerUI();
+
+   FileOrganizerUI(const FileOrganizerUI&) = delete;
+   FileOrganizerUI& operator=(const FileOrganizerUI&) = delete;
 
    void run();
 
@@ -78,6 +84,8 @@ class FileOrganizerUI {
    bool duplicate_scan_in_progress_ = false;
    ftxui::ScreenInteractive* screen_ = nullptr;
    std::mutex duplicate_mutex_;
+   std::thread duplicate_thread_;
+   std::atomic<bool> stop_requested_{false};
 
    ftxui::Component create_file_list();
    ftxui::Component create_directory_browser();

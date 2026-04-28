@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "utils.hpp"
 #include "vector_ops.hpp"
 #include <algorithm>
 #include <fstream>
@@ -9,6 +10,13 @@
 #include <thread>
 
 using namespace ftxui;
+
+FileOrganizerUI::~FileOrganizerUI() {
+   stop_requested_ = true;
+   if (duplicate_thread_.joinable()) {
+      duplicate_thread_.join();
+   }
+}
 
 FileOrganizerUI::FileOrganizerUI(AppConfig& config)
     : config_(config), scanner_(config.watch_dir, false, config.scan_depth),
@@ -159,9 +167,15 @@ void FileOrganizerUI::find_duplicates() {
 
    auto files_copy = files_;
 
-   std::thread([this, files_copy]() {
+   if (duplicate_thread_.joinable()) {
+      duplicate_thread_.join();
+   }
+
+   stop_requested_ = false;
+   duplicate_thread_ = std::thread([this, files_copy]() {
       auto progress_callback = [this](size_t current, size_t total,
                                       const std::string& message) {
+         if (stop_requested_.load()) return;
          {
             std::lock_guard<std::mutex> lock(duplicate_mutex_);
             duplicate_progress_current_ = current;
@@ -175,6 +189,8 @@ void FileOrganizerUI::find_duplicates() {
 
       auto result =
           duplicate_detector_->find_duplicates(files_copy, progress_callback);
+
+      if (stop_requested_.load()) return;
 
       {
          std::lock_guard<std::mutex> lock(duplicate_mutex_);
@@ -195,7 +211,7 @@ void FileOrganizerUI::find_duplicates() {
       if (screen_) {
          screen_->PostEvent(Event::Custom);
       }
-   }).detach();
+   });
 }
 
 void FileOrganizerUI::quarantine_selected_duplicate() {
@@ -386,7 +402,7 @@ void FileOrganizerUI::exit_config_editor() {
 
 void FileOrganizerUI::save_config() {
    try {
-      auto config_path = fs::path(std::getenv("HOME")) / ".config" /
+      auto config_path = require_home_directory() / ".config" /
                          "file-organizer" / "config.json";
       config_.save_to_file(config_path);
       status_message_ = "Configuration saved successfully";
