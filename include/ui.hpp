@@ -47,6 +47,8 @@ class FileOrganizerUI {
 
    enum class ConfigSection { Directories, General, Categories, Rules };
 
+   enum class BrowserSubView { Browse, Favorites, Recent };
+
    std::vector<FileInfo> files_;
    std::vector<fs::path> directory_entries_;
    std::vector<DuplicateGroup> duplicate_groups_;
@@ -66,6 +68,16 @@ class FileOrganizerUI {
    SortMode sort_mode_ = SortMode::Name;
    bool sort_ascending_ = true;
    std::string status_message_;
+
+   // Directory browser state
+   BrowserSubView browser_sub_view_ = BrowserSubView::Browse;
+   bool creating_folder_ = false;
+   std::string new_folder_name_;
+   bool browser_search_active_ = false;
+   std::string browser_search_query_;
+   int selected_quick_access_ = -1;
+   int selected_recent_ = 0;
+   int selected_favorite_ = 0;
 
    // Config editor state
    ConfigSection config_section_ = ConfigSection::Directories;
@@ -120,6 +132,13 @@ class FileOrganizerUI {
    void browse_directory(const fs::path& path);
    void select_current_directory();
    void navigate_up_directory();
+   void browser_jump_to(const fs::path& path);
+   void browser_create_folder();
+   void browser_toggle_favorite();
+   void browser_start_search();
+   void browser_cancel_search();
+   std::vector<fs::path> get_filtered_entries() const;
+   std::vector<std::pair<std::string, fs::path>> get_quick_access_dirs() const;
    void undo_last_move();
    void update_organizer_base_dir();
    void increase_scan_depth();

@@ -627,6 +627,14 @@ void FileOrganizerUI::enter_directory_browser(bool source) {
        browsing_source_ ? config_.watch_dir : config_.organize_base_dir;
    directory_entries_ = list_directory(current_browse_path_);
    selected_dir_ = 0;
+   browser_sub_view_ = BrowserSubView::Browse;
+   creating_folder_ = false;
+   new_folder_name_.clear();
+   browser_search_active_ = false;
+   browser_search_query_.clear();
+   selected_quick_access_ = -1;
+   selected_recent_ = 0;
+   selected_favorite_ = 0;
    ui_mode_ = UIMode::DirectoryBrowser;
    status_message_ = std::string("Browsing ") +
                      (browsing_source_ ? "source" : "target") + " directory";
@@ -649,20 +657,106 @@ void FileOrganizerUI::browse_directory(const fs::path& path) {
 }
 
 void FileOrganizerUI::select_current_directory() {
+   config_.add_recent_directory(current_browse_path_.string());
    if (browsing_source_) {
       config_.watch_dir = current_browse_path_;
       scanner_ = FileScanner(config_.watch_dir, false, config_.scan_depth);
       status_message_ =
-          "Source directory updated: " + current_browse_path_.string();
+          "Source directory set: " + current_browse_path_.string();
    } else {
       config_.organize_base_dir = current_browse_path_;
       organizer_.set_base_dir(config_.organize_base_dir);
       organizer_.clear_history();
       status_message_ =
-          "Target directory updated: " + current_browse_path_.string();
+          "Target directory set: " + current_browse_path_.string();
    }
    exit_directory_browser();
    scan_files();
+}
+
+void FileOrganizerUI::browser_jump_to(const fs::path& path) {
+   if (fs::exists(path) && fs::is_directory(path)) {
+      browse_directory(path);
+      status_message_ = "Jumped to: " + path.string();
+   } else {
+      status_message_ = "Directory not found: " + path.string();
+   }
+}
+
+void FileOrganizerUI::browser_create_folder() {
+   if (new_folder_name_.empty()) {
+      status_message_ = "Folder name cannot be empty";
+      creating_folder_ = false;
+      return;
+   }
+   auto new_path = current_browse_path_ / new_folder_name_;
+   try {
+      fs::create_directories(new_path);
+      status_message_ = "Created: " + new_folder_name_;
+      creating_folder_ = false;
+      new_folder_name_.clear();
+      browse_directory(new_path);
+   } catch (const fs::filesystem_error& e) {
+      status_message_ = std::string("Failed: ") + e.what();
+      creating_folder_ = false;
+      new_folder_name_.clear();
+   }
+}
+
+void FileOrganizerUI::browser_toggle_favorite() {
+   auto dir_str = current_browse_path_.string();
+   auto it = std::find(config_.favorite_directories.begin(),
+                       config_.favorite_directories.end(), dir_str);
+   if (it != config_.favorite_directories.end()) {
+      config_.favorite_directories.erase(it);
+      status_message_ = "Removed from favorites";
+   } else {
+      config_.favorite_directories.push_back(dir_str);
+      status_message_ = "Added to favorites";
+   }
+}
+
+void FileOrganizerUI::browser_start_search() {
+   browser_search_active_ = true;
+   browser_search_query_.clear();
+   status_message_ = "Type to search...";
+}
+
+void FileOrganizerUI::browser_cancel_search() {
+   browser_search_active_ = false;
+   browser_search_query_.clear();
+   status_message_ = "Search cancelled";
+}
+
+std::vector<fs::path> FileOrganizerUI::get_filtered_entries() const {
+   if (!browser_search_active_ || browser_search_query_.empty()) {
+      return directory_entries_;
+   }
+   std::vector<fs::path> filtered;
+   auto query_lower = browser_search_query_;
+   std::transform(query_lower.begin(), query_lower.end(), query_lower.begin(),
+                  ::tolower);
+   for (const auto& entry : directory_entries_) {
+      auto name = entry.filename().string();
+      auto name_lower = name;
+      std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(),
+                     ::tolower);
+      if (name_lower.find(query_lower) != std::string::npos) {
+         filtered.push_back(entry);
+      }
+   }
+   return filtered;
+}
+
+std::vector<std::pair<std::string, fs::path>>
+FileOrganizerUI::get_quick_access_dirs() const {
+   auto home = require_home_directory();
+   std::vector<std::pair<std::string, fs::path>> dirs;
+   dirs.emplace_back("Home", home);
+   dirs.emplace_back("Desktop", home / "Desktop");
+   dirs.emplace_back("Downloads", home / "Downloads");
+   dirs.emplace_back("Documents", home / "Documents");
+   return dirs;
 }
 
 void FileOrganizerUI::navigate_up_directory() {
@@ -676,65 +770,218 @@ Component FileOrganizerUI::create_directory_browser() {
    auto browser = Container::Vertical({});
 
    return Renderer(browser, [this] {
-      Elements items;
+      // --- Tab bar ---
+      auto src_tab = text(" Source ");
+      auto dst_tab = text(" Destination ");
+      if (browsing_source_) {
+         src_tab = src_tab | inverted | bold | color(Color::Cyan);
+         dst_tab = dst_tab | dim;
+      } else {
+         src_tab = src_tab | dim;
+         dst_tab = dst_tab | inverted | bold | color(Color::Cyan);
+      }
+      auto tabs = hbox({src_tab, text(" "), dst_tab}) | center;
 
-      items.push_back(hbox({
-          text("📁 ..") | bold,
-          text(" (Parent directory)") | dim,
-      }));
-
-      const int visible_lines = 15;
-      const int total_dirs = static_cast<int>(directory_entries_.size());
-
-      if (total_dirs > 0) {
-         int start = std::max(0, selected_dir_ - visible_lines / 2);
-         int end = std::min(total_dirs, start + visible_lines);
-
-         if (end - start < visible_lines && start > 0) {
-            start = std::max(0, end - visible_lines);
+      // --- Quick access row ---
+      auto quick_dirs = get_quick_access_dirs();
+      Elements quick_buttons;
+      for (size_t i = 0; i < quick_dirs.size(); ++i) {
+         auto btn = text("[" + quick_dirs[i].first + "]");
+         if (static_cast<int>(i) == selected_quick_access_) {
+            btn = btn | inverted | bold;
+         } else {
+            btn = btn | color(Color::GrayLight);
          }
+         quick_buttons.push_back(btn);
+         quick_buttons.push_back(text(" "));
+      }
+      auto quick_row = hbox(quick_buttons);
 
-         for (int i = start; i < end; ++i) {
-            const auto& dir = directory_entries_[i];
-            auto is_selected = i == selected_dir_;
+      // --- Breadcrumb path ---
+      Elements breadcrumbs;
+      fs::path accumulated;
+      for (const auto& part : current_browse_path_) {
+         if (!breadcrumbs.empty()) {
+            breadcrumbs.push_back(text(" / ") | dim);
+         }
+         accumulated /= part;
+         breadcrumbs.push_back(text(part.string()) | color(Color::Cyan));
+      }
+      auto breadcrumb_row = hbox(breadcrumbs);
 
-            auto item = hbox({
-                text("📁 "),
-                text(dir.filename().string()) | flex,
-            });
+      // --- Main content depends on sub-view ---
+      Elements content_items;
 
-            if (is_selected) {
-               item = item | inverted | bold;
+      if (creating_folder_) {
+         content_items.push_back(
+             text("New folder name:") | bold | color(Color::Yellow));
+         content_items.push_back(
+             text("> " + new_folder_name_ + "_") | inverted);
+         content_items.push_back(
+             text("Enter: Create | Esc: Cancel") | dim);
+      } else if (browser_sub_view_ == BrowserSubView::Recent) {
+         content_items.push_back(
+             text("Recent Directories") | bold | color(Color::Yellow));
+         content_items.push_back(separator());
+         if (config_.recent_directories.empty()) {
+            content_items.push_back(text("No recent directories") | dim);
+         } else {
+            for (size_t i = 0; i < config_.recent_directories.size(); ++i) {
+               auto item = text(config_.recent_directories[i]);
+               if (static_cast<int>(i) == selected_recent_) {
+                  item = item | inverted | bold;
+               }
+               content_items.push_back(item);
+            }
+         }
+      } else if (browser_sub_view_ == BrowserSubView::Favorites) {
+         content_items.push_back(
+             text("Favorite Directories") | bold | color(Color::Yellow));
+         content_items.push_back(separator());
+         if (config_.favorite_directories.empty()) {
+            content_items.push_back(text("No favorites yet (F to add)") | dim);
+         } else {
+            for (size_t i = 0; i < config_.favorite_directories.size(); ++i) {
+               auto item = text(config_.favorite_directories[i]);
+               if (static_cast<int>(i) == selected_favorite_) {
+                  item = item | inverted | bold;
+               }
+               content_items.push_back(item);
+            }
+         }
+      } else {
+         // Browse view
+         auto filtered = get_filtered_entries();
+         const int total_dirs = static_cast<int>(filtered.size());
+
+         // Parent directory entry
+         auto parent_item = hbox({
+             text("  \xe2\x86\x91 ") | bold | color(Color::Yellow),
+             text("Parent Directory") | bold,
+         });
+         if (selected_dir_ == -1) {
+            parent_item = parent_item | inverted;
+         }
+         content_items.push_back(parent_item);
+
+         // Directory entries
+         const int visible_lines = 15;
+         if (total_dirs > 0) {
+            int clamped_sel = std::max(0, selected_dir_);
+            int start = std::max(0, clamped_sel - visible_lines / 2);
+            int end = std::min(total_dirs, start + visible_lines);
+            if (end - start < visible_lines && start > 0) {
+               start = std::max(0, end - visible_lines);
             }
 
-            items.push_back(item);
+            for (int i = start; i < end; ++i) {
+               const auto& dir = filtered[i];
+               auto is_selected = (i == selected_dir_);
+
+               // Count items inside
+               int child_count = 0;
+               try {
+                  for (const auto& e : fs::directory_iterator(dir)) {
+                     (void)e;
+                     child_count++;
+                     if (child_count > 999) break;
+                  }
+               } catch (...) {
+               }
+
+               auto item = hbox({
+                   text("  \xf0\x9f\x93\x81 "),
+                   text(dir.filename().string()) | flex,
+                   text(std::to_string(child_count) + " items") | dim |
+                       size(WIDTH, EQUAL, 12),
+               });
+
+               if (is_selected) {
+                  item = item | inverted | bold;
+               }
+
+               content_items.push_back(item);
+            }
          }
+
+         // Navigation info
+         auto nav_info = text("[" +
+                              std::to_string(std::max(0, selected_dir_) + 1) +
+                              "/" + std::to_string(total_dirs) + "]") |
+                         dim;
+         content_items.push_back(separator());
+         content_items.push_back(nav_info);
       }
 
-      auto nav_info = text("[" + std::to_string(selected_dir_ + 1) + "/" +
-                           std::to_string(total_dirs) + "]") |
-                      dim;
+      // --- Search bar ---
+      Element search_bar = text("");
+      if (browser_search_active_) {
+         search_bar = hbox({
+                          text("Search: ") | bold | color(Color::Yellow),
+                          text(browser_search_query_ + "_") | inverted,
+                      });
+      }
+
+      // --- Current path display ---
+      auto current_label = browsing_source_ ? "Source" : "Destination";
+      auto path_display = hbox({
+          text(std::string(current_label) + ": ") | bold,
+          text(current_browse_path_.string()) | color(Color::Green),
+      });
+
+      // --- Favorite indicator ---
+      bool is_fav = std::find(config_.favorite_directories.begin(),
+                              config_.favorite_directories.end(),
+                              current_browse_path_.string()) !=
+                    config_.favorite_directories.end();
+      auto fav_indicator =
+          is_fav ? (text(" ★") | color(Color::Yellow)) : text("");
+
+      // --- Help bar ---
+      auto help_bar = hbox({
+          text("Enter") | bold,
+          text(": Open  "),
+          text("S/Space") | bold,
+          text(": Select  "),
+          text("Tab") | bold,
+          text(": Src/Dst  "),
+          text("n") | bold,
+          text(": New Folder  "),
+          text("/") | bold,
+          text(": Search  "),
+          text("f") | bold,
+          text(": Favs  "),
+          text("Esc") | bold,
+          text(": Cancel"),
+      }) | dim;
+
+      auto help_bar2 = hbox({
+          text("h") | bold,
+          text(": Home  "),
+          text("d") | bold,
+          text(": Desktop  "),
+          text("F") | bold,
+          text(": Toggle Fav  "),
+          text("Backspace") | bold,
+          text(": Up  "),
+          text("r") | bold,
+          text(": Recent"),
+      }) | dim;
 
       return vbox({
-          text("Directory Browser - " +
-               std::string(browsing_source_ ? "Source" : "Target")) |
-              bold | center | color(Color::Cyan),
+          tabs,
           separator(),
-          text("Current: " + current_browse_path_.string()) | dim,
+          hbox({quick_row, filler(), fav_indicator}),
           separator(),
-          nav_info,
+          breadcrumb_row,
           separator(),
-          vbox(items) | frame | flex,
+          search_bar,
+          vbox(content_items) | vscroll_indicator | frame | flex,
           separator(),
-          hbox({
-              text("Enter") | bold,
-              text(": Select | "),
-              text("Backspace") | bold,
-              text(": Up | "),
-              text("Esc") | bold,
-              text(": Cancel"),
-          }) | dim |
-              center,
+          path_display,
+          separator(),
+          help_bar | center,
+          help_bar2 | center,
       });
    });
 }
@@ -840,6 +1087,7 @@ Component FileOrganizerUI::create_controls() {
                  text("s      : Cycle sort mode"),
                  text("o      : Toggle sort order"),
                  text("b      : Browse source dir"),
+                 text("         (S: Select, /: Search)"),
                  text("t      : Browse target dir"),
                  text("c      : Select categories"),
                  text("C      : Config editor"),
@@ -1725,17 +1973,156 @@ void FileOrganizerUI::run() {
       }
 
       if (ui_mode_ == UIMode::DirectoryBrowser) {
+         // --- Folder creation mode ---
+         if (creating_folder_) {
+            if (event == Event::Escape) {
+               creating_folder_ = false;
+               new_folder_name_.clear();
+               status_message_ = "Cancelled folder creation";
+               return true;
+            }
+            if (event == Event::Return) {
+               browser_create_folder();
+               return true;
+            }
+            if (event == Event::Backspace) {
+               if (!new_folder_name_.empty()) {
+                  new_folder_name_.pop_back();
+               }
+               return true;
+            }
+            if (event.is_character()) {
+               std::string chars = event.character();
+               if (!chars.empty() && chars[0] >= 32 && chars[0] <= 126) {
+                  new_folder_name_ += chars[0];
+               }
+               return true;
+            }
+            return false;
+         }
+
+         // --- Search mode ---
+         if (browser_search_active_) {
+            if (event == Event::Escape) {
+               browser_cancel_search();
+               return true;
+            }
+            if (event == Event::Return) {
+               browser_search_active_ = false;
+               selected_dir_ = 0;
+               status_message_ = "Search applied";
+               return true;
+            }
+            if (event == Event::Backspace) {
+               if (!browser_search_query_.empty()) {
+                  browser_search_query_.pop_back();
+                  selected_dir_ = 0;
+               }
+               return true;
+            }
+            if (event.is_character()) {
+               std::string chars = event.character();
+               if (!chars.empty()) {
+                  browser_search_query_ += chars[0];
+                  selected_dir_ = 0;
+               }
+               return true;
+            }
+            return false;
+         }
+
+         // --- Recent sub-view ---
+         if (browser_sub_view_ == BrowserSubView::Recent) {
+            if (event == Event::Escape) {
+               browser_sub_view_ = BrowserSubView::Browse;
+               return true;
+            }
+            if (event == Event::ArrowUp) {
+               selected_recent_ = std::max(0, selected_recent_ - 1);
+               return true;
+            }
+            if (event == Event::ArrowDown) {
+               selected_recent_ = std::min(
+                   static_cast<int>(config_.recent_directories.size()) - 1,
+                   selected_recent_ + 1);
+               return true;
+            }
+            if (event == Event::Return) {
+               if (selected_recent_ >= 0 &&
+                   selected_recent_ <
+                       static_cast<int>(config_.recent_directories.size())) {
+                  browser_jump_to(
+                      fs::path(config_.recent_directories[selected_recent_]));
+                  browser_sub_view_ = BrowserSubView::Browse;
+               }
+               return true;
+            }
+            if (event == Event::Character('q')) {
+               screen.ExitLoopClosure()();
+               return true;
+            }
+            return false;
+         }
+
+         // --- Favorites sub-view ---
+         if (browser_sub_view_ == BrowserSubView::Favorites) {
+            if (event == Event::Escape) {
+               browser_sub_view_ = BrowserSubView::Browse;
+               return true;
+            }
+            if (event == Event::ArrowUp) {
+               selected_favorite_ = std::max(0, selected_favorite_ - 1);
+               return true;
+            }
+            if (event == Event::ArrowDown) {
+               selected_favorite_ = std::min(
+                   static_cast<int>(config_.favorite_directories.size()) - 1,
+                   selected_favorite_ + 1);
+               return true;
+            }
+            if (event == Event::Return) {
+               if (selected_favorite_ >= 0 &&
+                   selected_favorite_ <
+                       static_cast<int>(config_.favorite_directories.size())) {
+                  browser_jump_to(fs::path(
+                      config_.favorite_directories[selected_favorite_]));
+                  browser_sub_view_ = BrowserSubView::Browse;
+               }
+               return true;
+            }
+            if (event == Event::Character('q')) {
+               screen.ExitLoopClosure()();
+               return true;
+            }
+            return false;
+         }
+
+         // --- Normal browse mode ---
          if (event == Event::Escape) {
             exit_directory_browser();
             return true;
          }
+         if (event == Event::Tab) {
+            browsing_source_ = !browsing_source_;
+            current_browse_path_ = browsing_source_ ? config_.watch_dir
+                                                    : config_.organize_base_dir;
+            directory_entries_ = list_directory(current_browse_path_);
+            selected_dir_ = 0;
+            status_message_ = std::string("Switched to ") +
+                              (browsing_source_ ? "source" : "destination");
+            return true;
+         }
          if (event == Event::Return) {
+            auto filtered = get_filtered_entries();
             if (selected_dir_ >= 0 &&
-                selected_dir_ < static_cast<int>(directory_entries_.size())) {
-               browse_directory(directory_entries_[selected_dir_]);
-            } else {
-               select_current_directory();
+                selected_dir_ < static_cast<int>(filtered.size())) {
+               browse_directory(filtered[selected_dir_]);
             }
+            return true;
+         }
+         if (event == Event::Character('s') ||
+             event == Event::Character(' ')) {
+            select_current_directory();
             return true;
          }
          if (event == Event::Backspace) {
@@ -1747,9 +2134,42 @@ void FileOrganizerUI::run() {
             return true;
          }
          if (event == Event::ArrowDown) {
+            auto filtered = get_filtered_entries();
             selected_dir_ =
-                std::min(static_cast<int>(directory_entries_.size()) - 1,
+                std::min(static_cast<int>(filtered.size()) - 1,
                          selected_dir_ + 1);
+            return true;
+         }
+         if (event == Event::Character('h')) {
+            browser_jump_to(require_home_directory());
+            return true;
+         }
+         if (event == Event::Character('d')) {
+            browser_jump_to(require_home_directory() / "Desktop");
+            return true;
+         }
+         if (event == Event::Character('n')) {
+            creating_folder_ = true;
+            new_folder_name_.clear();
+            status_message_ = "Enter new folder name...";
+            return true;
+         }
+         if (event == Event::Character('f')) {
+            browser_sub_view_ = BrowserSubView::Favorites;
+            selected_favorite_ = 0;
+            return true;
+         }
+         if (event == Event::Character('r')) {
+            browser_sub_view_ = BrowserSubView::Recent;
+            selected_recent_ = 0;
+            return true;
+         }
+         if (event == Event::Character('F')) {
+            browser_toggle_favorite();
+            return true;
+         }
+         if (event == Event::Character('/')) {
+            browser_start_search();
             return true;
          }
          if (event == Event::Character('q')) {

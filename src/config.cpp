@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <fstream>
 
 void to_json(json& j, const OrganizeRule& rule) {
@@ -24,7 +25,9 @@ void to_json(json& j, const AppConfig& config) {
             {"enabled_categories", config.enabled_categories},
             {"dry_run", config.dry_run},
             {"scan_depth", config.scan_depth},
-            {"auto_purge_days", config.auto_purge_days}};
+            {"auto_purge_days", config.auto_purge_days},
+            {"recent_directories", config.recent_directories},
+            {"favorite_directories", config.favorite_directories}};
 }
 
 void from_json(const json& j, AppConfig& config) {
@@ -48,6 +51,14 @@ void from_json(const json& j, AppConfig& config) {
    config.dry_run = j.value("dry_run", false);
    config.scan_depth = j.value("scan_depth", 0);
    config.auto_purge_days = j.value("auto_purge_days", 0);
+   if (j.contains("recent_directories")) {
+      config.recent_directories =
+          j.at("recent_directories").get<std::vector<std::string>>();
+   }
+   if (j.contains("favorite_directories")) {
+      config.favorite_directories =
+          j.at("favorite_directories").get<std::vector<std::string>>();
+   }
 }
 
 std::optional<AppConfig>
@@ -129,4 +140,15 @@ AppConfig AppConfig::create_default() {
                     .create_subdirs_by_date = false}};
 
    return config;
+}
+
+void AppConfig::add_recent_directory(const std::string& dir) {
+   auto it = std::find(recent_directories.begin(), recent_directories.end(), dir);
+   if (it != recent_directories.end()) {
+      recent_directories.erase(it);
+   }
+   recent_directories.insert(recent_directories.begin(), dir);
+   if (static_cast<int>(recent_directories.size()) > MAX_RECENT_DIRS) {
+      recent_directories.resize(MAX_RECENT_DIRS);
+   }
 }
