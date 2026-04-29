@@ -3,6 +3,7 @@
 #include "config.hpp"
 #include "duplicate_detector.hpp"
 #include "file_scanner.hpp"
+#include "history_manager.hpp"
 #include "mime_detector.hpp"
 #include "organizer.hpp"
 #include "quarantine.hpp"
@@ -30,6 +31,7 @@ class FileOrganizerUI {
    MimeDetector mime_detector_;
    std::unique_ptr<DuplicateDetector> duplicate_detector_;
    Quarantine quarantine_;
+   std::unique_ptr<HistoryManager> history_manager_;
 
    enum class SortMode { Name, Size, Category, Extension };
 
@@ -38,7 +40,8 @@ class FileOrganizerUI {
       DirectoryBrowser,
       CategorySelector,
       ConfigEditor,
-      TextEditor
+      TextEditor,
+      HistoryViewer
    };
 
    enum class FocusedPanel { FileList, Stats, Preview, CategoryDist };
@@ -88,6 +91,15 @@ class FileOrganizerUI {
    std::string editing_field_name_;
    int text_cursor_pos_ = 0;
 
+   // History viewer state
+   std::vector<HistoryEntry> history_entries_;
+   int selected_history_ = 0;
+   int history_scroll_offset_ = 0;
+   std::string history_search_query_;
+   bool history_search_active_ = false;
+   std::optional<OperationType> history_type_filter_;
+   std::optional<OperationStatus> history_status_filter_;
+
    size_t duplicate_progress_current_ = 0;
    size_t duplicate_progress_total_ = 0;
    std::string duplicate_progress_message_;
@@ -109,6 +121,7 @@ class FileOrganizerUI {
    ftxui::Component create_file_preview();
    ftxui::Component create_category_distribution();
    ftxui::Component create_system_status();
+   ftxui::Component create_history_view();
 
    void scan_files();
    void organize_selected();
@@ -137,6 +150,15 @@ class FileOrganizerUI {
    void browser_cancel_search();
    std::vector<fs::path> get_filtered_entries() const;
    std::vector<std::pair<std::string, fs::path>> get_quick_access_dirs() const;
+   void enter_history_view();
+   void exit_history_view();
+   void history_undo_selected();
+   void history_delete_selected();
+   void history_export();
+   void history_cycle_type_filter();
+   void history_cycle_status_filter();
+   void history_apply_retention();
+   void history_refresh();
    void undo_last_move();
    void update_organizer_base_dir();
    void increase_scan_depth();

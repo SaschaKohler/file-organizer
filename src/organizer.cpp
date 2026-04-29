@@ -1,5 +1,6 @@
 #include "organizer.hpp"
 #include "file_scanner.hpp"
+#include "history_manager.hpp"
 #include <chrono>
 #include <cstddef>
 #include <ctime>
@@ -71,6 +72,9 @@ bool Organizer::undo_last_operation() {
     if (fs::exists(op.destination)) {
       fs::create_directories(op.source.parent_path());
       fs::rename(op.destination, op.source);
+      if (history_manager_) {
+        history_manager_->record_undo_move(op.destination, op.source);
+      }
       return true;
     }
   } catch (const fs::filesystem_error&) {
@@ -97,6 +101,19 @@ fs::path Organizer::resolve_conflict(const fs::path& target) const {
   }
 
   return target;
+}
+
+void Organizer::record_move_to_history(const fs::path& source,
+                                      const fs::path& dest,
+                                      const std::string& category) {
+   if (history_manager_) {
+      std::error_code ec;
+      int64_t fsize = 0;
+      if (fs::exists(dest, ec)) {
+         fsize = static_cast<int64_t>(fs::file_size(dest, ec));
+      }
+      history_manager_->record_move(source, dest, category, fsize);
+   }
 }
 
 void Organizer::move_file(const fs::path& source, const fs::path& dest) {

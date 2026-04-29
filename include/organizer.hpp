@@ -1,6 +1,7 @@
 #pragma once
 
 #include "file_scanner.hpp"
+class HistoryManager;
 #include <concepts>
 #include <cstddef>
 #include <filesystem>
@@ -55,7 +56,8 @@ public:
     if (!dry_run_) {
       fs::create_directories(target.parent_path());
       move_file(file.path, target);
-      
+      record_move_to_history(file.path, target, file.category);
+
       MoveOperation op;
       op.source = file.path;
       op.destination = target;
@@ -76,16 +78,20 @@ public:
   [[nodiscard]] size_t history_size() const { return move_history_.size(); }
   [[nodiscard]] const fs::path& get_base_dir() const { return base_dir_; }
   void set_base_dir(const fs::path& base_dir) { base_dir_ = base_dir; }
+  void set_history_manager(HistoryManager* hm) { history_manager_ = hm; }
 
 private:
   fs::path base_dir_;
   bool dry_run_;
   std::map<std::string, OrganizeRule> rules_;
   std::stack<MoveOperation> move_history_;
+  HistoryManager* history_manager_ = nullptr;
 
   [[nodiscard]] std::optional<OrganizeRule>
   get_rule(const std::string& category) const;
   [[nodiscard]] std::string get_date_subdir(const fs::path& file) const;
   [[nodiscard]] fs::path resolve_conflict(const fs::path& target) const;
   void move_file(const fs::path& source, const fs::path& dest);
+  void record_move_to_history(const fs::path& source, const fs::path& dest,
+                              const std::string& category);
 };

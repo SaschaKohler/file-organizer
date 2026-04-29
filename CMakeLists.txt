@@ -78,6 +78,12 @@ endif()
 # Find libmagic (system library)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBMAGIC REQUIRED libmagic)
+
+# Find SQLite3 (system library)
+find_package(SQLite3 REQUIRED)
+if(NOT SQLite3_FOUND)
+  message(FATAL_ERROR "SQLite3 not found. Install with: brew install sqlite3 (macOS) or apt-get install libsqlite3-dev (Ubuntu)")
+endif()
 if(NOT LIBMAGIC_FOUND)
   message(FATAL_ERROR "libmagic not found. Install with: brew install libmagic (macOS) or apt-get install libmagic-dev (Ubuntu)")
 endif()
@@ -111,6 +117,8 @@ add_library(file_organizer_lib STATIC
   src/logger.cpp
   src/duplicate_detector.cpp
   src/quarantine.cpp
+  src/history_database.cpp
+  src/history_manager.cpp
 )
 
 target_include_directories(file_organizer_lib PUBLIC
@@ -121,6 +129,7 @@ target_link_libraries(file_organizer_lib PUBLIC
   nlohmann_json::nlohmann_json
   ${LIBMAGIC_LIBRARIES}
   spdlog::spdlog
+  SQLite::SQLite3
 )
 
 target_link_directories(file_organizer_lib PUBLIC
@@ -146,6 +155,8 @@ if(BUILD_TESTS)
     tests/logger_test.cpp
     tests/duplicate_detector_test.cpp
     tests/quarantine_test.cpp
+    tests/history_database_test.cpp
+    tests/history_manager_test.cpp
   )
   
   target_link_libraries(file_organizer_tests PRIVATE
