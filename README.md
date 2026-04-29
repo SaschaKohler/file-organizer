@@ -28,6 +28,7 @@ A fast, modern CLI tool for automatically organizing files in directories. Featu
 - **Batch mode** for scripting and CI/CD pipelines
 - **Signal handling** for clean shutdown (Ctrl+C safe)
 - **Conflict resolution** — never overwrites existing files
+- **Persistent history** — all changes stored in SQLite with full undo support
 
 ## Quick Start
 
@@ -80,13 +81,13 @@ cmake --install build --prefix /usr/local
 - CMake 3.20+
 - C++20 compiler (GCC 11+, Clang 14+, AppleClang 15+)
 - libmagic (`brew install libmagic` on macOS, `apt install libmagic-dev` on Ubuntu)
+- SQLite3 (`brew install sqlite3` on macOS, `apt install libsqlite3-dev` on Ubuntu)
 - pkg-config
 
 **Fetched automatically via CMake:**
 - FTXUI v5.0.0 — Terminal UI
 - nlohmann/json v3.11.3 — JSON parsing
 - spdlog v1.12.0 — Structured logging
-- Eigen 3.4.0 — Linear algebra
 - CLI11 v2.4.1 — Command-line parsing
 - Google Test v1.14.0 — Unit testing (optional)
 - Google Benchmark v1.8.3 — Performance testing (optional)
