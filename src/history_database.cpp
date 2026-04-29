@@ -19,6 +19,12 @@ class HistoryDatabase::Impl {
    }
 
    bool initialize() {
+      finalize_statements();
+      if (db_) {
+         sqlite3_close(db_);
+         db_ = nullptr;
+      }
+
       fs::create_directories(db_path_.parent_path());
 
       int rc = sqlite3_open(db_path_.string().c_str(), &db_);
