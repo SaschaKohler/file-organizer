@@ -24,12 +24,13 @@ static fs::path get_history_db_path() {
 
 FileOrganizerUI::FileOrganizerUI(AppConfig& config)
     : config_(config), scanner_(config.watch_dir, false, config.scan_depth),
-      organizer_(config.organize_base_dir, config.dry_run),
-      mime_detector_(), duplicate_detector_(std::make_unique<DuplicateDetector>()),
+      organizer_(config.organize_base_dir, config.dry_run), mime_detector_(),
+      duplicate_detector_(std::make_unique<DuplicateDetector>()),
       quarantine_(config.quarantine_dir) {
 
    if (config_.history_enabled) {
-      history_manager_ = std::make_unique<HistoryManager>(get_history_db_path());
+      history_manager_ =
+          std::make_unique<HistoryManager>(get_history_db_path());
       organizer_.set_history_manager(history_manager_.get());
       quarantine_.set_history_manager(history_manager_.get());
       if (config_.history_retention_days > 0) {
@@ -179,7 +180,8 @@ void FileOrganizerUI::find_duplicates() {
    duplicate_thread_ = std::thread([this, files_copy]() {
       auto progress_callback = [this](size_t current, size_t total,
                                       const std::string& message) {
-         if (stop_requested_.load()) return;
+         if (stop_requested_.load())
+            return;
          {
             std::lock_guard<std::mutex> lock(duplicate_mutex_);
             duplicate_progress_current_ = current;
@@ -194,7 +196,8 @@ void FileOrganizerUI::find_duplicates() {
       auto result =
           duplicate_detector_->find_duplicates(files_copy, progress_callback);
 
-      if (stop_requested_.load()) return;
+      if (stop_requested_.load())
+         return;
 
       {
          std::lock_guard<std::mutex> lock(duplicate_mutex_);
@@ -357,7 +360,8 @@ void FileOrganizerUI::history_refresh() {
 }
 
 void FileOrganizerUI::history_undo_selected() {
-   if (!history_manager_ || history_entries_.empty()) return;
+   if (!history_manager_ || history_entries_.empty())
+      return;
    if (selected_history_ < 0 ||
        selected_history_ >= static_cast<int>(history_entries_.size()))
       return;
@@ -365,8 +369,8 @@ void FileOrganizerUI::history_undo_selected() {
    auto& entry = history_entries_[selected_history_];
    if (history_manager_->can_undo_from_history(entry.id)) {
       if (history_manager_->undo_operation(entry.id)) {
-         status_message_ = "Undone: " +
-                           fs::path(entry.source_path).filename().string();
+         status_message_ =
+             "Undone: " + fs::path(entry.source_path).filename().string();
          history_refresh();
          scan_files();
       } else {
@@ -378,7 +382,8 @@ void FileOrganizerUI::history_undo_selected() {
 }
 
 void FileOrganizerUI::history_delete_selected() {
-   if (!history_manager_ || history_entries_.empty()) return;
+   if (!history_manager_ || history_entries_.empty())
+      return;
    if (selected_history_ < 0 ||
        selected_history_ >= static_cast<int>(history_entries_.size()))
       return;
@@ -395,7 +400,8 @@ void FileOrganizerUI::history_delete_selected() {
 }
 
 void FileOrganizerUI::history_export() {
-   if (!history_manager_) return;
+   if (!history_manager_)
+      return;
    auto home = require_home_directory();
    auto export_path = home / "file-organizer-history.json";
    if (history_manager_->export_to_json(export_path)) {
@@ -446,7 +452,8 @@ void FileOrganizerUI::history_cycle_status_filter() {
 }
 
 void FileOrganizerUI::history_apply_retention() {
-   if (!history_manager_) return;
+   if (!history_manager_)
+      return;
    auto deleted = history_manager_->apply_retention_policy();
    status_message_ =
        "Retention: deleted " + std::to_string(deleted) + " old entries";
@@ -951,15 +958,14 @@ Component FileOrganizerUI::create_directory_browser() {
       Elements content_items;
 
       if (creating_folder_) {
-         content_items.push_back(
-             text("New folder name:") | bold | color(Color::Yellow));
-         content_items.push_back(
-             text("> " + new_folder_name_ + "_") | inverted);
-         content_items.push_back(
-             text("Enter: Create | Esc: Cancel") | dim);
+         content_items.push_back(text("New folder name:") | bold |
+                                 color(Color::Yellow));
+         content_items.push_back(text("> " + new_folder_name_ + "_") |
+                                 inverted);
+         content_items.push_back(text("Enter: Create | Esc: Cancel") | dim);
       } else if (browser_sub_view_ == BrowserSubView::Recent) {
-         content_items.push_back(
-             text("Recent Directories") | bold | color(Color::Yellow));
+         content_items.push_back(text("Recent Directories") | bold |
+                                 color(Color::Yellow));
          content_items.push_back(separator());
          if (config_.recent_directories.empty()) {
             content_items.push_back(text("No recent directories") | dim);
@@ -973,8 +979,8 @@ Component FileOrganizerUI::create_directory_browser() {
             }
          }
       } else if (browser_sub_view_ == BrowserSubView::Favorites) {
-         content_items.push_back(
-             text("Favorite Directories") | bold | color(Color::Yellow));
+         content_items.push_back(text("Favorite Directories") | bold |
+                                 color(Color::Yellow));
          content_items.push_back(separator());
          if (config_.favorite_directories.empty()) {
             content_items.push_back(text("No favorites yet (F to add)") | dim);
@@ -1022,7 +1028,8 @@ Component FileOrganizerUI::create_directory_browser() {
                   for (const auto& e : fs::directory_iterator(dir)) {
                      (void)e;
                      child_count++;
-                     if (child_count > 999) break;
+                     if (child_count > 999)
+                        break;
                   }
                } catch (...) {
                }
@@ -1043,10 +1050,10 @@ Component FileOrganizerUI::create_directory_browser() {
          }
 
          // Navigation info
-         auto nav_info = text("[" +
-                              std::to_string(std::max(0, selected_dir_) + 1) +
-                              "/" + std::to_string(total_dirs) + "]") |
-                         dim;
+         auto nav_info =
+             text("[" + std::to_string(std::max(0, selected_dir_) + 1) + "/" +
+                  std::to_string(total_dirs) + "]") |
+             dim;
          content_items.push_back(separator());
          content_items.push_back(nav_info);
       }
@@ -1055,9 +1062,9 @@ Component FileOrganizerUI::create_directory_browser() {
       Element search_bar = text("");
       if (browser_search_active_) {
          search_bar = hbox({
-                          text("Search: ") | bold | color(Color::Yellow),
-                          text(browser_search_query_ + "_") | inverted,
-                      });
+             text("Search: ") | bold | color(Color::Yellow),
+             text(browser_search_query_ + "_") | inverted,
+         });
       }
 
       // --- Current path display ---
@@ -1077,34 +1084,36 @@ Component FileOrganizerUI::create_directory_browser() {
 
       // --- Help bar ---
       auto help_bar = hbox({
-          text("Enter") | bold,
-          text(": Open  "),
-          text("S/Space") | bold,
-          text(": Select  "),
-          text("Tab") | bold,
-          text(": Src/Dst  "),
-          text("n") | bold,
-          text(": New Folder  "),
-          text("/") | bold,
-          text(": Search  "),
-          text("f") | bold,
-          text(": Favs  "),
-          text("Esc") | bold,
-          text(": Cancel"),
-      }) | dim;
+                          text("Enter") | bold,
+                          text(": Open  "),
+                          text("S/Space") | bold,
+                          text(": Select  "),
+                          text("Tab") | bold,
+                          text(": Src/Dst  "),
+                          text("n") | bold,
+                          text(": New Folder  "),
+                          text("/") | bold,
+                          text(": Search  "),
+                          text("f") | bold,
+                          text(": Favs  "),
+                          text("Esc") | bold,
+                          text(": Cancel"),
+                      }) |
+                      dim;
 
       auto help_bar2 = hbox({
-          text("h") | bold,
-          text(": Home  "),
-          text("d") | bold,
-          text(": Desktop  "),
-          text("F") | bold,
-          text(": Toggle Fav  "),
-          text("Backspace") | bold,
-          text(": Up  "),
-          text("r") | bold,
-          text(": Recent"),
-      }) | dim;
+                           text("h") | bold,
+                           text(": Home  "),
+                           text("d") | bold,
+                           text(": Desktop  "),
+                           text("F") | bold,
+                           text(": Toggle Fav  "),
+                           text("Backspace") | bold,
+                           text(": Up  "),
+                           text("r") | bold,
+                           text(": Recent"),
+                       }) |
+                       dim;
 
       return vbox({
           tabs,
@@ -1791,8 +1800,8 @@ Component FileOrganizerUI::create_history_view() {
          status_label = operation_status_to_string(*history_status_filter_);
       }
 
-      rows.push_back(
-          text("File Organizer - History") | bold | center | color(Color::Cyan));
+      rows.push_back(text("File Organizer - History") | bold | center |
+                     color(Color::Cyan));
       rows.push_back(separator());
 
       // Filter bar
@@ -1866,8 +1875,7 @@ Component FileOrganizerUI::create_history_view() {
             // Add similarity score for quarantine ops
             if (entry.operation_type == OperationType::QUARANTINE &&
                 entry.similarity_score > 0) {
-               int pct =
-                   static_cast<int>(entry.similarity_score * 100);
+               int pct = static_cast<int>(entry.similarity_score * 100);
                type_str += " " + std::to_string(pct) + "%";
             }
 
@@ -1876,8 +1884,7 @@ Component FileOrganizerUI::create_history_view() {
                     size(WIDTH, EQUAL, 22),
                 text(type_str) | size(WIDTH, EQUAL, 14),
                 text(src + " -> " + dst) | flex,
-                text(status_str) | color(status_color) |
-                    size(WIDTH, EQUAL, 12),
+                text(status_str) | color(status_color) | size(WIDTH, EQUAL, 12),
             });
 
             if (is_selected) {
@@ -1950,7 +1957,7 @@ void FileOrganizerUI::run() {
    auto main_component = Renderer(layout, [&] {
       if (ui_mode_ == UIMode::DirectoryBrowser) {
          return vbox({
-             text("File Organizer - AI Edition") | bold | center |
+             text("File Organizer - MacOSX") | bold | center |
                  color(Color::Cyan),
              separator(),
              dir_browser->Render() | flex,
@@ -1959,7 +1966,7 @@ void FileOrganizerUI::run() {
 
       if (ui_mode_ == UIMode::CategorySelector) {
          return vbox({
-             text("File Organizer - AI Edition") | bold | center |
+             text("File Organizer - MacOSX") | bold | center |
                  color(Color::Cyan),
              separator(),
              category_selector->Render() | flex,
@@ -1968,7 +1975,7 @@ void FileOrganizerUI::run() {
 
       if (ui_mode_ == UIMode::ConfigEditor) {
          return vbox({
-             text("File Organizer - AI Edition") | bold | center |
+             text("File Organizer - MacOSX") | bold | center |
                  color(Color::Cyan),
              separator(),
              config_editor->Render() | flex,
@@ -1977,7 +1984,7 @@ void FileOrganizerUI::run() {
 
       if (ui_mode_ == UIMode::TextEditor) {
          return vbox({
-             text("File Organizer - AI Edition") | bold | center |
+             text("File Organizer - MacOSX") | bold | center |
                  color(Color::Cyan),
              separator(),
              text_editor->Render() | flex,
@@ -1990,7 +1997,7 @@ void FileOrganizerUI::run() {
 
       if (show_duplicates_) {
          return vbox({
-             text("File Organizer - AI Edition") | bold | center |
+             text("File Organizer - MacOSX") | bold | center |
                  color(Color::Cyan),
              separator(),
              hbox({
@@ -2025,8 +2032,7 @@ void FileOrganizerUI::run() {
       }
 
       return vbox({
-          text("File Organizer - AI Edition") | bold | center |
-              color(Color::Cyan),
+          text("File Organizer - MacOSX") | bold | center | color(Color::Cyan),
           separator(),
           hbox({
               vbox({
@@ -2464,8 +2470,7 @@ void FileOrganizerUI::run() {
             }
             return true;
          }
-         if (event == Event::Character('s') ||
-             event == Event::Character(' ')) {
+         if (event == Event::Character('s') || event == Event::Character(' ')) {
             select_current_directory();
             return true;
          }
@@ -2479,9 +2484,8 @@ void FileOrganizerUI::run() {
          }
          if (event == Event::ArrowDown) {
             auto filtered = get_filtered_entries();
-            selected_dir_ =
-                std::min(static_cast<int>(filtered.size()) - 1,
-                         selected_dir_ + 1);
+            selected_dir_ = std::min(static_cast<int>(filtered.size()) - 1,
+                                     selected_dir_ + 1);
             return true;
          }
          if (event == Event::Character('h')) {
