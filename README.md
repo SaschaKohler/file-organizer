@@ -1,6 +1,12 @@
 # File Organizer
 
-A CLI tool for automatically organizing files in directories, with a modern terminal UI.
+> **Also known as:** `forg` / `file-forg` / `tidy-cli` — a smart file manager for the terminal
+
+A fast, modern CLI tool for automatically organizing files in directories. Features a beautiful TUI with real-time preview, duplicate detection, and intelligent categorization.
+
+![File Organizer TUI Screenshot](Screenshot%202026-04-29%20at%2011.08.00.png)
+
+*Interactive TUI showing file listing, statistics panel, and keyboard shortcuts*
 
 ## Features
 
@@ -23,14 +29,32 @@ A CLI tool for automatically organizing files in directories, with a modern term
 - **Signal handling** for clean shutdown (Ctrl+C safe)
 - **Conflict resolution** — never overwrites existing files
 
-## Build
+## Quick Start
 
-### Quick Start
 ```bash
+# Clone the repository
+git clone https://github.com/SaschaKohler/file-organizer.git
+cd file-organizer
+
+# Build (Release)
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
+
+# Run
 ./build/file_organizer
 ```
+
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **macOS** | ✅ Supported | 12.0+ (Monterey and later) |
+| **Linux** | ✅ Supported | Ubuntu 22.04+, Debian 12+, Fedora 39+ |
+| Windows | 🚧 Planned | Not yet available — expected in a future release |
+
+Both macOS and Linux are fully supported with CI/CD testing on GitHub Actions.
+
+## Build
 
 ### Development Build (with tests)
 ```bash
