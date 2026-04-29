@@ -19,8 +19,9 @@ class HistoryDatabase::Impl {
    }
 
    bool initialize() {
-      finalize_statements();
+      // Guard against double initialization — clean up first if needed
       if (db_) {
+         finalize_statements();
          sqlite3_close(db_);
          db_ = nullptr;
       }
