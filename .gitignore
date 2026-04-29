@@ -314,3 +314,26 @@ sandbox/
 
 # Keep directory structure
 !.gitkeep
+
+# AI assistant / IDE internal files
+.kilocode/
+.windsurf/
+AGENTS.md
+
+# Internal development docs (not relevant for public users)
+CPP20_CONCEPTS_EXPLAINED.md
+LEARNING_PATH.md
+QUICKSTART.md
+docs/PROJECT_STATE.md
+docs/PHASE1_SUMMARY.md
+docs/PHASE1_WEEK2_SUMMARY.md
+docs/CATEGORIZATION_IMPROVEMENTS.md
+docs/DUPLICATE_DETECTION_QUICKSTART.md
+docs/DUPLICATE_DETECTION_TESTING.md
+docs/DUPLICATE_UI_IMPROVEMENTS.md
+
+# Generator scripts (internal tooling)
+scripts/
+
+# ONNX section cleanup (no longer used)
+models/

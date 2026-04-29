@@ -1,5 +1,4 @@
 #include "duplicate_detector.hpp"
-#include "embedding_engine.hpp"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -9,7 +8,6 @@ namespace fs = std::filesystem;
 class DuplicateDetectorTest : public ::testing::Test {
  protected:
    fs::path test_dir_;
-   std::unique_ptr<EmbeddingEngine> engine_;
    std::unique_ptr<DuplicateDetector> detector_;
 
    void SetUp() override {
@@ -18,8 +16,7 @@ class DuplicateDetectorTest : public ::testing::Test {
       fs::remove_all(test_dir_);
       fs::create_directories(test_dir_);
 
-      engine_ = std::make_unique<EmbeddingEngine>();
-      detector_ = std::make_unique<DuplicateDetector>(*engine_, 0.95f);
+      detector_ = std::make_unique<DuplicateDetector>();
    }
 
    void TearDown() override {
@@ -182,56 +179,6 @@ TEST_F(DuplicateDetectorTest, DifferentSizesNotDetected) {
 
    auto duplicates = detector_->find_exact_duplicates(files);
    EXPECT_TRUE(duplicates.empty());
-}
-
-TEST_F(DuplicateDetectorTest, SetAndGetThreshold) {
-   EXPECT_FLOAT_EQ(detector_->get_similarity_threshold(), 0.95f);
-
-   detector_->set_similarity_threshold(0.85f);
-   EXPECT_FLOAT_EQ(detector_->get_similarity_threshold(), 0.85f);
-
-   detector_->set_similarity_threshold(0.99f);
-   EXPECT_FLOAT_EQ(detector_->get_similarity_threshold(), 0.99f);
-}
-
-TEST_F(DuplicateDetectorTest, FindDuplicatesDetectsIdenticalFilesViaEmbedding) {
-   // EmbeddingEngine is always enabled now (content-based SimHash).
-   // Identical files must produce identical embeddings → found as duplicates.
-   create_file("file1.txt", "identical content for embedding test");
-   create_file("file2.txt", "identical content for embedding test");
-
-   std::vector<FileInfo> files = {create_file_info("file1.txt"),
-                                  create_file_info("file2.txt")};
-
-   ASSERT_TRUE(engine_->is_enabled());
-   auto duplicates = detector_->find_duplicates(files);
-
-   ASSERT_EQ(duplicates.size(), 1u);
-   EXPECT_EQ(duplicates[0].files.size(), 2u);
-}
-
-TEST_F(DuplicateDetectorTest, FindDuplicatesDetectsNearDuplicates) {
-   // Build two large files that differ only in one 64-byte block.
-   // SimHash embeddings should be highly similar → detected as duplicates.
-   const std::string base(640, 'X'); // 10 × 64-byte blocks of 'X'
-   std::string modified = base;
-   // Change a few bytes in the first block only.
-   modified[0] = 'A';
-   modified[1] = 'B';
-   modified[2] = 'C';
-
-   create_file("near_dup_a.txt", base);
-   create_file("near_dup_b.txt", modified);
-
-   std::vector<FileInfo> files = {create_file_info("near_dup_a.txt"),
-                                  create_file_info("near_dup_b.txt")};
-
-   // Use a lower threshold to catch near-duplicates.
-   detector_->set_similarity_threshold(0.85f);
-   auto duplicates = detector_->find_duplicates(files);
-
-   // With 9/10 blocks identical the embeddings should be very similar.
-   EXPECT_GE(duplicates.size(), 1u);
 }
 
 TEST_F(DuplicateDetectorTest, WhitespaceOnlyFilesDetected) {

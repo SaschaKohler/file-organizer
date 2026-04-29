@@ -2,7 +2,6 @@
 
 #include "config.hpp"
 #include "duplicate_detector.hpp"
-#include "embedding_engine.hpp"
 #include "file_scanner.hpp"
 #include "mime_detector.hpp"
 #include "organizer.hpp"
@@ -28,7 +27,6 @@ class FileOrganizerUI {
    AppConfig& config_;
    FileScanner scanner_;
    Organizer organizer_;
-   EmbeddingEngine embedding_engine_;
    MimeDetector mime_detector_;
    std::unique_ptr<DuplicateDetector> duplicate_detector_;
    Quarantine quarantine_;
@@ -168,7 +166,6 @@ class FileOrganizerUI {
    std::string get_mime_type(const FileInfo& file) const;
    std::string get_sort_mode_string() const;
    std::map<std::string, size_t> get_category_stats() const;
-   std::optional<std::vector<float>> get_embedding(const FileInfo& file);
    std::vector<fs::path> list_directory(const fs::path& path);
    std::string get_file_preview_content(const FileInfo& file) const;
    ftxui::Element create_progress_bar(float progress, int width) const;
