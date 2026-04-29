@@ -26,6 +26,8 @@ void to_json(json& j, const AppConfig& config) {
             {"dry_run", config.dry_run},
             {"scan_depth", config.scan_depth},
             {"auto_purge_days", config.auto_purge_days},
+            {"history_retention_days", config.history_retention_days},
+            {"history_enabled", config.history_enabled},
             {"recent_directories", config.recent_directories},
             {"favorite_directories", config.favorite_directories}};
 }
@@ -51,6 +53,8 @@ void from_json(const json& j, AppConfig& config) {
    config.dry_run = j.value("dry_run", false);
    config.scan_depth = j.value("scan_depth", 0);
    config.auto_purge_days = j.value("auto_purge_days", 0);
+   config.history_retention_days = j.value("history_retention_days", 30);
+   config.history_enabled = j.value("history_enabled", true);
    if (j.contains("recent_directories")) {
       config.recent_directories =
           j.at("recent_directories").get<std::vector<std::string>>();

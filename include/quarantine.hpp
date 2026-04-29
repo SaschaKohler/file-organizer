@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+class HistoryManager;
+
 namespace fs = std::filesystem;
 
 // Records one entry in the on-disk manifest.
@@ -55,6 +57,7 @@ class Quarantine {
    [[nodiscard]] size_t undo_stack_size() const;
 
    [[nodiscard]] const fs::path& base_dir() const { return base_dir_; }
+   void set_history_manager(HistoryManager* hm) { history_manager_ = hm; }
 
    // Load and return all entries from the on-disk manifest.
    [[nodiscard]] std::vector<QuarantineManifestEntry> load_manifest() const;
@@ -68,6 +71,7 @@ class Quarantine {
    fs::path base_dir_;
    fs::path manifest_path_;
    std::vector<UndoEntry> undo_stack_;
+   HistoryManager* history_manager_ = nullptr;
 
    // Compute a unique quarantine path for `original_path`:
    // <base_dir>/<timestamp>_<filename>

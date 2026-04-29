@@ -1,4 +1,5 @@
 #include "quarantine.hpp"
+#include "history_manager.hpp"
 
 #include <chrono>
 #include <ctime>
@@ -153,6 +154,12 @@ Quarantine::quarantine_file(const fs::path& duplicate_path,
    entry.method = method;
    append_to_manifest(entry);
 
+   // Record in persistent history
+   if (history_manager_) {
+      history_manager_->record_quarantine(duplicate_path, dest, kept_path,
+                                         similarity, method);
+   }
+
    return dest;
 }
 
@@ -182,6 +189,11 @@ bool Quarantine::undo_last() {
       if (ec)
          return false;
       fs::remove(quarantine);
+   }
+
+   // Record in persistent history
+   if (history_manager_) {
+      history_manager_->record_undo_quarantine(original, quarantine);
    }
 
    undo_stack_.pop_back();

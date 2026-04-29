@@ -17,6 +17,8 @@ struct AppConfig {
    bool dry_run = false;
    int scan_depth = 0;
    int auto_purge_days = 0; // 0 = never auto-purge
+   int history_retention_days = 30; // 0 = keep forever
+   bool history_enabled = true;
 
    std::vector<std::string> recent_directories;
    std::vector<std::string> favorite_directories;

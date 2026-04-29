@@ -17,11 +17,26 @@ FileOrganizerUI::~FileOrganizerUI() {
    }
 }
 
+static fs::path get_history_db_path() {
+   auto home = require_home_directory();
+   return home / ".config" / "file-organizer" / "history.db";
+}
+
 FileOrganizerUI::FileOrganizerUI(AppConfig& config)
     : config_(config), scanner_(config.watch_dir, false, config.scan_depth),
       organizer_(config.organize_base_dir, config.dry_run),
       mime_detector_(), duplicate_detector_(std::make_unique<DuplicateDetector>()),
       quarantine_(config.quarantine_dir) {
+
+   if (config_.history_enabled) {
+      history_manager_ = std::make_unique<HistoryManager>(get_history_db_path());
+      organizer_.set_history_manager(history_manager_.get());
+      quarantine_.set_history_manager(history_manager_.get());
+      if (config_.history_retention_days > 0) {
+         history_manager_->set_retention_days(config_.history_retention_days);
+         history_manager_->apply_retention_policy();
+      }
+   }
 
    for (const auto& rule : config_.rules) {
       organizer_.add_rule(rule.category, rule.target_dir,
@@ -302,6 +317,140 @@ void FileOrganizerUI::undo_last_quarantine() {
    } else {
       status_message_ = "Undo failed: quarantined file may be missing";
    }
+}
+
+// ─── History viewer methods ─────────────────────────────────────────
+
+void FileOrganizerUI::enter_history_view() {
+   ui_mode_ = UIMode::HistoryViewer;
+   selected_history_ = 0;
+   history_scroll_offset_ = 0;
+   history_search_query_.clear();
+   history_search_active_ = false;
+   history_type_filter_ = std::nullopt;
+   history_status_filter_ = std::nullopt;
+   history_refresh();
+   status_message_ = "History View - Press q to return";
+}
+
+void FileOrganizerUI::exit_history_view() {
+   ui_mode_ = UIMode::FileList;
+   status_message_ = "Ready";
+}
+
+void FileOrganizerUI::history_refresh() {
+   if (!history_manager_) {
+      history_entries_.clear();
+      return;
+   }
+
+   if (!history_search_query_.empty() || history_type_filter_.has_value() ||
+       history_status_filter_.has_value()) {
+      HistoryFilter filter;
+      filter.type = history_type_filter_;
+      filter.status = history_status_filter_;
+      history_entries_ =
+          history_manager_->search(history_search_query_, history_type_filter_);
+   } else {
+      history_entries_ = history_manager_->get_recent_history(500);
+   }
+}
+
+void FileOrganizerUI::history_undo_selected() {
+   if (!history_manager_ || history_entries_.empty()) return;
+   if (selected_history_ < 0 ||
+       selected_history_ >= static_cast<int>(history_entries_.size()))
+      return;
+
+   auto& entry = history_entries_[selected_history_];
+   if (history_manager_->can_undo_from_history(entry.id)) {
+      if (history_manager_->undo_operation(entry.id)) {
+         status_message_ = "Undone: " +
+                           fs::path(entry.source_path).filename().string();
+         history_refresh();
+         scan_files();
+      } else {
+         status_message_ = "Undo failed";
+      }
+   } else {
+      status_message_ = "Cannot undo this operation";
+   }
+}
+
+void FileOrganizerUI::history_delete_selected() {
+   if (!history_manager_ || history_entries_.empty()) return;
+   if (selected_history_ < 0 ||
+       selected_history_ >= static_cast<int>(history_entries_.size()))
+      return;
+
+   auto& entry = history_entries_[selected_history_];
+   if (history_manager_->delete_entry(entry.id)) {
+      status_message_ = "Deleted history entry";
+      history_entries_.erase(history_entries_.begin() + selected_history_);
+      if (selected_history_ >= static_cast<int>(history_entries_.size())) {
+         selected_history_ =
+             std::max(0, static_cast<int>(history_entries_.size()) - 1);
+      }
+   }
+}
+
+void FileOrganizerUI::history_export() {
+   if (!history_manager_) return;
+   auto home = require_home_directory();
+   auto export_path = home / "file-organizer-history.json";
+   if (history_manager_->export_to_json(export_path)) {
+      status_message_ = "Exported to: " + export_path.string();
+   } else {
+      status_message_ = "Export failed";
+   }
+}
+
+void FileOrganizerUI::history_cycle_type_filter() {
+   if (!history_type_filter_.has_value()) {
+      history_type_filter_ = OperationType::MOVE;
+   } else if (*history_type_filter_ == OperationType::MOVE) {
+      history_type_filter_ = OperationType::QUARANTINE;
+   } else if (*history_type_filter_ == OperationType::QUARANTINE) {
+      history_type_filter_ = OperationType::UNDO_MOVE;
+   } else if (*history_type_filter_ == OperationType::UNDO_MOVE) {
+      history_type_filter_ = OperationType::UNDO_QUARANTINE;
+   } else {
+      history_type_filter_ = std::nullopt;
+   }
+
+   std::string label = "All";
+   if (history_type_filter_.has_value()) {
+      label = operation_type_to_string(*history_type_filter_);
+   }
+   status_message_ = "Type filter: " + label;
+   history_refresh();
+}
+
+void FileOrganizerUI::history_cycle_status_filter() {
+   if (!history_status_filter_.has_value()) {
+      history_status_filter_ = OperationStatus::SUCCESS;
+   } else if (*history_status_filter_ == OperationStatus::SUCCESS) {
+      history_status_filter_ = OperationStatus::FAILED;
+   } else if (*history_status_filter_ == OperationStatus::FAILED) {
+      history_status_filter_ = OperationStatus::ROLLED_BACK;
+   } else {
+      history_status_filter_ = std::nullopt;
+   }
+
+   std::string label = "All";
+   if (history_status_filter_.has_value()) {
+      label = operation_status_to_string(*history_status_filter_);
+   }
+   status_message_ = "Status filter: " + label;
+   history_refresh();
+}
+
+void FileOrganizerUI::history_apply_retention() {
+   if (!history_manager_) return;
+   auto deleted = history_manager_->apply_retention_policy();
+   status_message_ =
+       "Retention: deleted " + std::to_string(deleted) + " old entries";
+   history_refresh();
 }
 
 void FileOrganizerUI::undo_last_move() {
@@ -1080,6 +1229,7 @@ Component FileOrganizerUI::create_controls() {
                  text("t      : Browse target dir"),
                  text("c      : Select categories"),
                  text("C      : Config editor"),
+                 text("h      : View history"),
                  text("u      : Undo last move"),
                  text("+/-    : Scan depth"),
                  text("q      : Quit"),
@@ -1627,6 +1777,140 @@ Component FileOrganizerUI::create_duplicate_view() {
    });
 }
 
+Component FileOrganizerUI::create_history_view() {
+   return Renderer([this] {
+      Elements rows;
+
+      // Title
+      std::string type_label = "All";
+      if (history_type_filter_.has_value()) {
+         type_label = operation_type_to_string(*history_type_filter_);
+      }
+      std::string status_label = "All";
+      if (history_status_filter_.has_value()) {
+         status_label = operation_status_to_string(*history_status_filter_);
+      }
+
+      rows.push_back(
+          text("File Organizer - History") | bold | center | color(Color::Cyan));
+      rows.push_back(separator());
+
+      // Filter bar
+      Elements filter_bar;
+      if (history_search_active_) {
+         filter_bar.push_back(text("Search: " + history_search_query_ + "_") |
+                              bold);
+      } else {
+         filter_bar.push_back(text("Search: /") | dim);
+      }
+      filter_bar.push_back(text("  ") | dim);
+      filter_bar.push_back(text("[t] Type: " + type_label) | dim);
+      filter_bar.push_back(text("  ") | dim);
+      filter_bar.push_back(text("[s] Status: " + status_label) | dim);
+      filter_bar.push_back(text("  ") | dim);
+      filter_bar.push_back(
+          text(std::to_string(history_entries_.size()) + " entries") | dim);
+      rows.push_back(hbox(filter_bar));
+      rows.push_back(separator());
+
+      // Column headers
+      rows.push_back(hbox({
+          text("  Date/Time         ") | bold | size(WIDTH, EQUAL, 22),
+          text("Operation  ") | bold | size(WIDTH, EQUAL, 14),
+          text("Source -> Destination") | bold | flex,
+          text("Status    ") | bold | size(WIDTH, EQUAL, 12),
+      }));
+      rows.push_back(separator());
+
+      if (history_entries_.empty()) {
+         rows.push_back(text("  No history entries") | dim | center);
+      } else {
+         // Calculate visible range
+         int terminal_height = 20;
+         int start = history_scroll_offset_;
+         int end = std::min(static_cast<int>(history_entries_.size()),
+                            start + terminal_height);
+
+         for (int i = start; i < end; ++i) {
+            const auto& entry = history_entries_[i];
+            bool is_selected = (i == selected_history_);
+
+            // Truncate paths for display
+            std::string src = entry.source_path;
+            if (src.length() > 30) {
+               src = "..." + src.substr(src.length() - 27);
+            }
+            std::string dst = entry.destination_path;
+            if (dst.length() > 30) {
+               dst = "..." + dst.substr(dst.length() - 27);
+            }
+
+            std::string type_str =
+                operation_type_to_string(entry.operation_type);
+            std::string status_str;
+            Color status_color = Color::White;
+            if (entry.status == OperationStatus::SUCCESS) {
+               status_str = "OK";
+               status_color = Color::Green;
+            } else if (entry.status == OperationStatus::FAILED) {
+               status_str = "FAILED";
+               status_color = Color::Red;
+            } else if (entry.status == OperationStatus::ROLLED_BACK) {
+               status_str = "UNDONE";
+               status_color = Color::Yellow;
+            } else {
+               status_str = "PENDING";
+               status_color = Color::Blue;
+            }
+
+            // Add similarity score for quarantine ops
+            if (entry.operation_type == OperationType::QUARANTINE &&
+                entry.similarity_score > 0) {
+               int pct =
+                   static_cast<int>(entry.similarity_score * 100);
+               type_str += " " + std::to_string(pct) + "%";
+            }
+
+            auto row = hbox({
+                text((is_selected ? "> " : "  ") + entry.timestamp + " ") |
+                    size(WIDTH, EQUAL, 22),
+                text(type_str) | size(WIDTH, EQUAL, 14),
+                text(src + " -> " + dst) | flex,
+                text(status_str) | color(status_color) |
+                    size(WIDTH, EQUAL, 12),
+            });
+
+            if (is_selected) {
+               row = row | inverted;
+            }
+            rows.push_back(row);
+         }
+      }
+
+      rows.push_back(filler());
+      rows.push_back(separator());
+      rows.push_back(hbox({
+          text("[Enter] Undo") | dim,
+          text("  ") | dim,
+          text("[d] Delete") | dim,
+          text("  ") | dim,
+          text("[e] Export") | dim,
+          text("  ") | dim,
+          text("[/] Search") | dim,
+          text("  ") | dim,
+          text("[t] Type") | dim,
+          text("  ") | dim,
+          text("[s] Status") | dim,
+          text("  ") | dim,
+          text("[r] Retention") | dim,
+          text("  ") | dim,
+          text("[q] Back") | dim,
+      }));
+
+      return vbox(rows) | border;
+   });
+}
+
 void FileOrganizerUI::run() {
    scan_files();
 
@@ -1639,6 +1923,7 @@ void FileOrganizerUI::run() {
    auto category_selector = create_category_selector();
    auto config_editor = create_config_editor();
    auto text_editor = create_text_editor();
+   auto history_view = create_history_view();
    auto stats = create_stats();
    auto controls = create_controls();
    auto file_details = create_file_details();
@@ -1653,6 +1938,7 @@ void FileOrganizerUI::run() {
        category_selector,
        config_editor,
        text_editor,
+       history_view,
        stats,
        controls,
        file_details,
@@ -1696,6 +1982,10 @@ void FileOrganizerUI::run() {
              separator(),
              text_editor->Render() | flex,
          });
+      }
+
+      if (ui_mode_ == UIMode::HistoryViewer) {
+         return history_view->Render() | flex;
       }
 
       if (show_duplicates_) {
@@ -1939,6 +2229,88 @@ void FileOrganizerUI::run() {
             if (!chars.empty()) {
                update_text_editor(chars[0]);
             }
+            return true;
+         }
+         return false;
+      }
+
+      if (ui_mode_ == UIMode::HistoryViewer) {
+         if (history_search_active_) {
+            if (event == Event::Escape) {
+               history_search_active_ = false;
+               history_search_query_.clear();
+               history_refresh();
+               return true;
+            }
+            if (event == Event::Return) {
+               history_search_active_ = false;
+               history_refresh();
+               selected_history_ = 0;
+               return true;
+            }
+            if (event == Event::Backspace) {
+               if (!history_search_query_.empty()) {
+                  history_search_query_.pop_back();
+               }
+               return true;
+            }
+            if (event.is_character()) {
+               std::string chars = event.character();
+               if (!chars.empty()) {
+                  history_search_query_ += chars[0];
+               }
+               return true;
+            }
+            return false;
+         }
+
+         if (event == Event::Escape || event == Event::Character('q')) {
+            exit_history_view();
+            return true;
+         }
+         if (event == Event::ArrowUp) {
+            selected_history_ = std::max(0, selected_history_ - 1);
+            if (selected_history_ < history_scroll_offset_) {
+               history_scroll_offset_ = selected_history_;
+            }
+            return true;
+         }
+         if (event == Event::ArrowDown) {
+            selected_history_ =
+                std::min(static_cast<int>(history_entries_.size()) - 1,
+                         selected_history_ + 1);
+            if (selected_history_ >= history_scroll_offset_ + 20) {
+               history_scroll_offset_ = selected_history_ - 19;
+            }
+            return true;
+         }
+         if (event == Event::Return) {
+            history_undo_selected();
+            return true;
+         }
+         if (event == Event::Character('d')) {
+            history_delete_selected();
+            return true;
+         }
+         if (event == Event::Character('e')) {
+            history_export();
+            return true;
+         }
+         if (event == Event::Character('/')) {
+            history_search_active_ = true;
+            history_search_query_.clear();
+            return true;
+         }
+         if (event == Event::Character('t')) {
+            history_cycle_type_filter();
+            return true;
+         }
+         if (event == Event::Character('s')) {
+            history_cycle_status_filter();
+            return true;
+         }
+         if (event == Event::Character('r')) {
+            history_apply_retention();
             return true;
          }
          return false;
@@ -2273,6 +2645,10 @@ void FileOrganizerUI::run() {
       }
       if (event == Event::Character('c')) {
          enter_category_selector();
+         return true;
+      }
+      if (event == Event::Character('h')) {
+         enter_history_view();
          return true;
       }
       if (event == Event::Character('C')) {
