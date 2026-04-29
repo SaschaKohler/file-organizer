@@ -317,8 +317,14 @@ sandbox/
 
 # AI assistant / IDE internal files
 .kilocode/
+.kilosoft/
 .windsurf/
+.cursor/
+.aider*
 AGENTS.md
+AI_*.md
+*.ai.md
+.copilot*
 
 # Internal development docs (not relevant for public users)
 CPP20_CONCEPTS_EXPLAINED.md
