@@ -1,6 +1,5 @@
 #include "ui.hpp"
 #include "utils.hpp"
-#include "vector_ops.hpp"
 #include <algorithm>
 #include <fstream>
 #include <ftxui/component/screen_interactive.hpp>
@@ -20,9 +19,8 @@ FileOrganizerUI::~FileOrganizerUI() {
 
 FileOrganizerUI::FileOrganizerUI(AppConfig& config)
     : config_(config), scanner_(config.watch_dir, false, config.scan_depth),
-      organizer_(config.organize_base_dir, config.dry_run), embedding_engine_(),
-      mime_detector_(), duplicate_detector_(std::make_unique<DuplicateDetector>(
-                            embedding_engine_)),
+      organizer_(config.organize_base_dir, config.dry_run),
+      mime_detector_(), duplicate_detector_(std::make_unique<DuplicateDetector>()),
       quarantine_(config.quarantine_dir) {
 
    for (const auto& rule : config_.rules) {
@@ -34,8 +32,7 @@ FileOrganizerUI::FileOrganizerUI(AppConfig& config)
        "images",        "videos", "audio",    "documents",  "spreadsheets",
        "presentations", "code",   "archives", "installers", "other"};
 
-   status_message_ = embedding_engine_.is_enabled() ? "ONNX Runtime: Ready"
-                                                    : "ONNX Runtime: Disabled";
+   status_message_ = "Ready";
 }
 
 std::string FileOrganizerUI::get_file_info_text(const FileInfo& file) const {
@@ -51,14 +48,6 @@ std::string FileOrganizerUI::get_file_info_text(const FileInfo& file) const {
 std::string FileOrganizerUI::get_mime_type(const FileInfo& file) const {
    auto mime = mime_detector_.detect(file.path);
    return mime.value_or("unknown");
-}
-
-std::optional<std::vector<float>>
-FileOrganizerUI::get_embedding(const FileInfo& file) {
-   if (!embedding_engine_.is_enabled()) {
-      return std::nullopt;
-   }
-   return embedding_engine_.embed_file(file.path);
 }
 
 std::map<std::string, size_t> FileOrganizerUI::get_category_stats() const {
@@ -1128,11 +1117,6 @@ Component FileOrganizerUI::create_file_details() {
       details.push_back(text("Extension: " + file.extension));
       details.push_back(text("MIME: " + get_mime_type(file)));
 
-      if (embedding_engine_.is_enabled()) {
-         details.push_back(separator());
-         details.push_back(text("Embedding: Available") | color(Color::Green));
-      }
-
       return vbox(details) | border;
    });
 }
@@ -1157,12 +1141,6 @@ Component FileOrganizerUI::create_file_preview() {
       items.push_back(
           text("Size: " + std::to_string(file.size / 1024) + " KB") | dim);
       items.push_back(text("Category: " + file.category) | dim);
-
-      auto embedding = get_embedding(file);
-      if (embedding.has_value()) {
-         items.push_back(text("Embedding: ✓ Available") | color(Color::Green) |
-                         dim);
-      }
 
       items.push_back(separator());
 
@@ -1256,25 +1234,19 @@ Component FileOrganizerUI::create_system_status() {
    return Renderer([this] {
       Elements status_items;
 
-      auto onnx_status = embedding_engine_.is_enabled()
-                             ? text("✓ ONNX") | color(Color::Green)
-                             : text("✗ ONNX") | color(Color::Red);
-
       auto mode_status = config_.dry_run
                              ? text("DRY RUN") | color(Color::Yellow) | bold
                              : text("LIVE") | color(Color::Green) | bold;
 
       status_items.push_back(hbox({
           text("Status: ") | dim,
-          onnx_status,
+          mode_status,
           text(" | ") | dim,
           text("Depth: " + std::to_string(config_.scan_depth) + "/5") | dim,
           text(" | ") | dim,
           text("Categories: " +
                std::to_string(config_.enabled_categories.size()) + "/10") |
               dim,
-          text(" | ") | dim,
-          mode_status,
       }));
 
       status_items.push_back(separator());

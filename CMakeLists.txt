@@ -20,7 +20,6 @@ endif()
 
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_BENCHMARKS "Build benchmarks" ON)
-option(ENABLE_ONNX_RUNTIME "Enable ONNX Runtime for embeddings" OFF)
 
 include(FetchContent)
 
@@ -40,14 +39,6 @@ FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog
   GIT_TAG v1.12.0
-)
-
-set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
-set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-  eigen
-  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-  GIT_TAG 3.4.0
 )
 
 FetchContent_Declare(
@@ -74,12 +65,6 @@ if(BUILD_BENCHMARKS)
   set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
-# Fetch Eigen separately with its tests disabled to avoid registering 900+ ctest targets
-set(_saved_BUILD_TESTING ${BUILD_TESTING})
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(eigen)
-set(BUILD_TESTING ${_saved_BUILD_TESTING} CACHE BOOL "" FORCE)
-
 if(BUILD_TESTS AND BUILD_BENCHMARKS)
   FetchContent_MakeAvailable(ftxui json spdlog cli11 googletest benchmark)
 elseif(BUILD_TESTS)
@@ -88,12 +73,6 @@ elseif(BUILD_BENCHMARKS)
   FetchContent_MakeAvailable(ftxui json spdlog cli11 benchmark)
 else()
   FetchContent_MakeAvailable(ftxui json spdlog cli11)
-endif()
-
-# Ensure Eigen target is available when fetched from source
-if(NOT TARGET Eigen3::Eigen)
-  add_library(Eigen3::Eigen INTERFACE IMPORTED)
-  target_include_directories(Eigen3::Eigen INTERFACE ${eigen_SOURCE_DIR})
 endif()
 
 # Find libmagic (system library)
@@ -130,8 +109,6 @@ add_library(file_organizer_lib STATIC
   src/config.cpp
   src/mime_detector.cpp
   src/logger.cpp
-  src/embedding_engine.cpp
-  src/vector_ops.cpp
   src/duplicate_detector.cpp
   src/quarantine.cpp
 )
@@ -140,34 +117,10 @@ target_include_directories(file_organizer_lib PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-if(ENABLE_ONNX_RUNTIME)
-  pkg_check_modules(ONNXRUNTIME libonnxruntime)
-  if(NOT ONNXRUNTIME_FOUND)
-    set(ONNXRUNTIME_PREFIX "/usr/local/opt/onnxruntime")
-    if(EXISTS "${ONNXRUNTIME_PREFIX}/include")
-      set(ONNXRUNTIME_INCLUDE_DIRS "${ONNXRUNTIME_PREFIX}/include")
-      set(ONNXRUNTIME_LIBRARY_DIRS "${ONNXRUNTIME_PREFIX}/lib")
-      set(ONNXRUNTIME_LIBRARIES "onnxruntime")
-      set(ONNXRUNTIME_FOUND TRUE)
-      message(STATUS "Found ONNX Runtime at: ${ONNXRUNTIME_PREFIX}")
-    else()
-      message(WARNING "ONNX Runtime not found. Install with: brew install onnxruntime")
-    endif()
-  endif()
-  
-  if(ONNXRUNTIME_FOUND)
-    target_include_directories(file_organizer_lib PUBLIC ${ONNXRUNTIME_INCLUDE_DIRS})
-    target_link_directories(file_organizer_lib PUBLIC ${ONNXRUNTIME_LIBRARY_DIRS})
-    target_link_libraries(file_organizer_lib PUBLIC ${ONNXRUNTIME_LIBRARIES})
-    target_compile_definitions(file_organizer_lib PUBLIC USE_ONNXRUNTIME)
-  endif()
-endif()
-
 target_link_libraries(file_organizer_lib PUBLIC
   nlohmann_json::nlohmann_json
   ${LIBMAGIC_LIBRARIES}
   spdlog::spdlog
-  Eigen3::Eigen
 )
 
 target_link_directories(file_organizer_lib PUBLIC
@@ -191,8 +144,6 @@ if(BUILD_TESTS)
     tests/config_test.cpp
     tests/mime_detector_test.cpp
     tests/logger_test.cpp
-    tests/embedding_engine_test.cpp
-    tests/vector_ops_test.cpp
     tests/duplicate_detector_test.cpp
     tests/quarantine_test.cpp
   )
