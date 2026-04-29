@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
+#include <unistd.h>
 #include <nlohmann/json.hpp>
 
 namespace fs = std::filesystem;
@@ -10,7 +11,12 @@ namespace fs = std::filesystem;
 class HistoryManagerTest : public ::testing::Test {
  protected:
    void SetUp() override {
-      test_dir_ = fs::temp_directory_path() / "history_mgr_test";
+      auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+      std::string unique_name =
+          std::string(info->test_suite_name()) + "_" + info->name() + "_" +
+          std::to_string(getpid());
+      test_dir_ = fs::temp_directory_path() / unique_name;
+      fs::remove_all(test_dir_);
       fs::create_directories(test_dir_);
       db_path_ = test_dir_ / "test_history.db";
 
