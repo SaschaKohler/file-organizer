@@ -327,6 +327,7 @@ AI_*.md
 .copilot*
 
 # Internal development docs (not relevant for public users)
+CHANGELOG.md
 CPP20_CONCEPTS_EXPLAINED.md
 LEARNING_PATH.md
 QUICKSTART.md
