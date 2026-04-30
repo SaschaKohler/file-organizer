@@ -1176,7 +1176,7 @@ Component FileOrganizerUI::create_file_list() {
       auto content = vbox(items);
       if (total_files > 0 && selected_file_ >= 0 &&
           selected_file_ < total_files) {
-         content = content | focusPositionRelative(0, selected_file_);
+         content = content | focusPosition(0, selected_file_);
       }
 
       return vbox({
